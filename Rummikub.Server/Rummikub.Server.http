@@ -1,0 +1,6 @@
+@Rummikub.Server_HostAddress = http://localhost:5155
+
+GET {{Rummikub.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
