@@ -6,15 +6,14 @@ using Rummikub.Solver.Solver;
 
 var hand = new Hand(
 [
-    new Tile(Color.Red, 3, false),
-    new Tile(Color.Red, 4, false),
-    new Tile(Color.Red, 5, false),
-    new Tile( Color.Blue, 7, false),
-    new Tile( Color.Black, 7, false),
+    new Tile(Color.Yellow, 5, false),
+    new Tile(Color.Black, 5, false),
     new Tile( null, null, true) // Joker,
 ]);
 
-var board = BoardState.Empty;
+var board = new BoardState([new Group(GroupType.Run, [new Tile(Color.Blue, 5, false), new Tile(Color.Blue, 6, false), new Tile(Color.Blue, 7, false), new Tile(Color.Blue, 8, false), new Tile(Color.Blue, 9, false)]),
+    new Group(GroupType.Run, [new Tile(Color.Red, 5, false), new Tile(Color.Red, 6, false), new Tile(Color.Red, 7, false), new Tile(Color.Red, 8, false)]),
+    new Group(GroupType.Set, [new Tile(Color.Yellow, 9, false), new Tile(Color.Black, 9, false), new Tile(null, null, true)])]);
 
 var solver = new RummikubSolver();
 

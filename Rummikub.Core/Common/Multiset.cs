@@ -18,6 +18,11 @@ public sealed class MultiSet<T> : IEnumerable<T> where T : notnull
         _counts = counts;
     }
 
+    public MultiSet()
+    {
+        _counts = [];
+    }
+
 
     /// <summary>Total number of elements including duplicates</summary>
     public int Count => _counts.Values.Sum();
@@ -43,6 +48,13 @@ public sealed class MultiSet<T> : IEnumerable<T> where T : notnull
     public void Add(T item)
     {
         _counts[item] = CountOf(item) + 1;
+    }
+    public void AddRange(IEnumerable<T> items)
+    {
+        foreach (var item in items)
+        {
+            Add(item);
+        }
     }
 
     public void Remove(T item)

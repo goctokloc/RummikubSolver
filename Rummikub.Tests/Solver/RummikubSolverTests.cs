@@ -181,4 +181,87 @@ public class RummikubSolverTests
 
         Assert.That(result.PlayedTiles, Has.Count.EqualTo(4));
     }
+
+    [Test]
+    public void Solver_Repeated_Calls_Are_Idempotent()
+    {
+        Hand hand = new([
+            new Tile(Color.Red, 3, false),
+            new Tile(Color.Red, 4, false),
+            new Tile(Color.Red, 5, false)
+        ]);
+        BoardState board = BoardState.Empty;
+
+        var first = _solver.SolveMaxTiles(hand, board);
+        var second = _solver.SolveMaxTiles(hand, board);
+
+        Assert.That(first, Is.EqualTo(second));
+    }
+
+    [Test]
+    public void Solver_Splits_Existing_Run()
+    {
+        BoardState board = new BoardState([
+            new Group(GroupType.Run, [
+                new Tile(Color.Red, 3, false),
+                new Tile(Color.Red, 4, false),
+                new Tile(Color.Red, 5, false),
+                new Tile(Color.Red, 6, false),
+                new Tile(Color.Red, 7, false)
+            ])
+        ]);
+
+        Hand hand = new([
+            new Tile(Color.Red, 5, false)
+        ]);
+
+        var result = _solver.SolveMaxTiles(hand, board);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.PlayedTiles, Has.Count.EqualTo(1));
+            Assert.That(result.Board.Groups, Has.Count.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public void Solver_Steals_Tile_From_Set()
+    {
+        BoardState board = new BoardState([
+            new Group(GroupType.Set, [
+                new Tile(Color.Red, 5, false),
+                new Tile(Color.Blue, 5, false),
+                new Tile(Color.Black, 5, false),
+                new Tile(Color.Yellow, 5, false)
+            ])
+        ]);
+
+        Hand hand = new([
+            new Tile(Color.Red, 3, false),
+            new Tile(Color.Red, 4, false)
+        ]);
+
+        var result = _solver.SolveMaxTiles(hand, board);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.PlayedTiles, Has.Count.EqualTo(2));
+            Assert.That(result.Board.Groups, Has.Count.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public void Solver_Invalid_Board_Yields_Empty_If_Cannot_Fix()
+    {
+        BoardState board = new BoardState([
+            new Group(GroupType.Set, [
+                new Tile(Color.Red, 1, false),
+                new Tile(Color.Blue, 2, false),
+                new Tile(Color.Black, 3, false)
+            ])
+        ]);
+
+        Hand hand = new([new Tile(Color.Yellow, 2, false)]);
+
+        var result = _solver.SolveMaxTiles(hand, board);
+        Assert.That(result, Is.EqualTo(SolverResult.Empty));
+    }
 }
