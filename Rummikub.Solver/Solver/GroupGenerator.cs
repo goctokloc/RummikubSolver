@@ -5,7 +5,14 @@ namespace Rummikub.Solver.Solver;
 
 internal static class GroupGenerator
 {
-    public static IEnumerable<Group> GenerateValidGroups(MultiSet<Tile> pool)
+    /// <summary>
+    /// Every distinct group formable from <paramref name="pool"/>. Readings of the same tiles that differ
+    /// only in joker placement (R2 R3 J as R1–R3 or R2–R4) are emitted once, lowest start first.
+    /// </summary>
+    public static IEnumerable<Group> GenerateValidGroups(MultiSet<Tile> pool) =>
+        Candidates(pool).DistinctBy(g => g.Tiles.Order().ToEquatableArray());
+
+    private static IEnumerable<Group> Candidates(MultiSet<Tile> pool)
     {
         int jokerCount = Math.Min(pool.CountOf(Tile.Joker), Group.MaxJokers);
 

@@ -24,6 +24,12 @@ public static class DtoMapper
         {
             var path = $"board[{i}]";
             var dto = boardDtos[i];
+            if (dto is null)
+            {
+                found[path] = "group is required";
+                continue;
+            }
+
             var tileErrorsBefore = found.Count;
             var tiles = MapTiles(dto.Tiles, $"{path}.tiles", found);
             if (found.Count > tileErrorsBefore)
@@ -87,12 +93,14 @@ public static class DtoMapper
         return tiles;
     }
 
-    private static bool TryMapTile(TileDto dto, out Tile tile, [NotNullWhen(false)] out string? error)
+    private static bool TryMapTile(TileDto? dto, out Tile tile, [NotNullWhen(false)] out string? error)
     {
         tile = default;
         error = null;
 
-        if (dto.Joker == true)
+        if (dto is null)
+            error = "tile is required";
+        else if (dto.Joker == true)
         {
             if (dto.Color is not null || dto.Value is not null)
                 error = "joker must not have color or value";
@@ -111,9 +119,14 @@ public static class DtoMapper
         return error is null;
     }
 
-    /// <summary>Case-insensitive enum name parse that rejects numeric strings.</summary>
-    private static bool TryParseEnum<TEnum>(string? text, out TEnum value) where TEnum : struct, Enum =>
-        Enum.TryParse(text, ignoreCase: true, out value)
-        && Enum.IsDefined(value)
-        && !int.TryParse(text, out _);
+    /// <summary>
+    /// Case-insensitive match against a single enum member name; rejects numeric and
+    /// comma-combined text that <see cref="Enum.TryParse{TEnum}(string?, bool, out TEnum)"/> would accept.
+    /// </summary>
+    private static bool TryParseEnum<TEnum>(string? text, out TEnum value) where TEnum : struct, Enum
+    {
+        var name = Enum.GetNames<TEnum>().FirstOrDefault(n => string.Equals(n, text, StringComparison.OrdinalIgnoreCase));
+        value = name is null ? default : Enum.Parse<TEnum>(name);
+        return name is not null;
+    }
 }

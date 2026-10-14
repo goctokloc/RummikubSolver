@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Rummikub.Core\Rummikub.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rummikub.Tests" />
+  </ItemGroup>
+
 </Project>

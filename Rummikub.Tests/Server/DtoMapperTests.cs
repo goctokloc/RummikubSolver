@@ -72,6 +72,37 @@ public class DtoMapperTests
             Is.EquivalentTo(new Dictionary<string, string> { ["board[0].tiles[2]"] = "unknown color 'Pink'" }));
 
     [Test]
+    public void Null_List_Elements_Are_Reported()
+    {
+        var errors = Errors(new SolveRequest
+        {
+            Hand = [null!],
+            Board = [null!, new GroupInputDto { Type = "run", Tiles = [T("Red", 1), T("Red", 2), null!] }],
+        });
+        Assert.That(errors, Is.EquivalentTo(new Dictionary<string, string>
+        {
+            ["hand[0]"] = "tile is required",
+            ["board[0]"] = "group is required",
+            ["board[1].tiles[2]"] = "tile is required",
+        }));
+    }
+
+    [Test]
+    public void Comma_Separated_Enum_Text_Is_Rejected()
+    {
+        var errors = Errors(new SolveRequest
+        {
+            Hand = [T("Red,Blue", 3)],
+            Board = [new GroupInputDto { Type = "Run,Set", Tiles = [T("Red", 1), T("Red", 2), T("Red", 3)] }],
+        });
+        Assert.That(errors, Is.EquivalentTo(new Dictionary<string, string>
+        {
+            ["hand[0]"] = "unknown color 'Red,Blue'",
+            ["board[0]"] = "unknown group type 'Run,Set'",
+        }));
+    }
+
+    [Test]
     public void Response_Slots_Carry_Joker_Meaning()
     {
         var result = SolverResult.Create(BoardState.Of([Run.Create(Color.Red, 3, 3, 0b010)]), [Tile.Joker]);
