@@ -2,16 +2,23 @@ import { useState } from 'react';
 import { Play, Plus, RefreshCw, Layers } from 'lucide-react';
 import './index.css';
 
-type TileDto = { color?: string; value?: number; isJoker: boolean };
-type GroupDto = { type: string; tiles: TileDto[] };
-type SolveRequestDto = { hand: TileDto[]; board: GroupDto[] };
-type SolveResponseDto = { playedTiles: TileDto[]; newBoard: GroupDto[]; tilesPlayedCount: number };
+type TileDto = { color?: string; value?: number; joker?: boolean };
+type GroupInputDto = { type: string; tiles: TileDto[] };
+type SolveRequest = { hand: TileDto[]; board: GroupInputDto[] };
+type SlotDto = { color: string; value: number; joker: boolean };
+type GroupDto = { type: string; slots: SlotDto[] };
+type SolveResponse = { playedTiles: TileDto[]; board: GroupDto[]; tilesPlayed: number };
+type ValidationProblem = { errors?: Record<string, string[]> };
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5155';
+const COLOR_LETTER: Record<string, string> = { Red: 'R', Blue: 'B', Yellow: 'Y', Black: 'K' };
 
 export default function App() {
   const [hand, setHand] = useState<TileDto[]>([]);
-  const [board, setBoard] = useState<GroupDto[]>([]);
+  const [board, setBoard] = useState<GroupInputDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<SolveResponseDto | null>(null);
+  const [result, setResult] = useState<SolveResponse | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
 
   const colors = ['Red', 'Blue', 'Black', 'Yellow'];
   const values = Array.from({ length: 13 }, (_, i) => i + 1);
@@ -24,12 +31,14 @@ export default function App() {
   const [gType, setGType] = useState('Set');
   const [gTiles, setGTiles] = useState<TileDto[]>([]);
 
+  const builderTile = (): TileDto => (tIsJoker ? { joker: true } : { color: tColor, value: tValue });
+
   const addTileToHand = () => {
-    setHand([...hand, { color: tIsJoker ? undefined : tColor, value: tIsJoker ? undefined : tValue, isJoker: tIsJoker }]);
+    setHand([...hand, builderTile()]);
   };
 
   const addTileToGroupBuilder = () => {
-    setGTiles([...gTiles, { color: tIsJoker ? undefined : tColor, value: tIsJoker ? undefined : tValue, isJoker: tIsJoker }]);
+    setGTiles([...gTiles, builderTile()]);
   };
 
   const commitGroupToBoard = () => {
@@ -49,15 +58,22 @@ export default function App() {
   const solve = async () => {
     setLoading(true);
     setResult(null);
+    setErrors([]);
     try {
-      const payload: SolveRequestDto = { hand, board };
-      const response = await fetch('http://localhost:5155/api/solver/solve', {
+      const payload: SolveRequest = { hand, board };
+      const response = await fetch(`${API_URL}/api/solver/solve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await response.json();
-      setResult(data);
+      if (response.status === 400) {
+        const problem: ValidationProblem = await response.json();
+        setErrors(Object.entries(problem.errors ?? {}).map(([k, v]) => `${k}: ${v.join(', ')}`));
+      } else if (!response.ok) {
+        setErrors([`Server error (${response.status})`]);
+      } else {
+        setResult(await response.json());
+      }
     } catch (e) {
       console.error(e);
       alert('Failed to connect to Rummikub Solver API');
@@ -67,12 +83,24 @@ export default function App() {
 
   const renderTile = (t: TileDto, idx: number, removeFn?: (i: number) => void) => (
     <div key={idx} className="tile-wrapper">
-      <div className={`tile ${t.isJoker ? 'joker' : t.color?.toLowerCase()}`}>
-        {t.isJoker ? '☻' : t.value}
+      <div className={`tile ${t.joker ? 'joker' : t.color?.toLowerCase()}`}>
+        {t.joker ? '☻' : t.value}
       </div>
       {removeFn && (
         <button onClick={() => removeFn(idx)} className="remove-btn">✕</button>
       )}
+    </div>
+  );
+
+  const renderSlot = (s: SlotDto, idx: number) => (
+    <div key={idx} className="tile-wrapper">
+      <div className={`tile ${s.joker ? 'joker' : s.color.toLowerCase()}`}>
+        {s.joker ? (
+          <>
+            ☻<span className="joker-face">{`${COLOR_LETTER[s.color] ?? s.color[0]}${s.value}`}</span>
+          </>
+        ) : s.value}
+      </div>
     </div>
   );
 
@@ -115,19 +143,29 @@ export default function App() {
             </div>
           </div>
 
+          {/* Validation Errors */}
+          {errors.length > 0 && (
+            <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid #ef4444' }}>
+              <h3 style={{ color: '#ef4444', marginBottom: '0.5rem' }}>Could not solve</h3>
+              <ul>
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+
           {/* Result Area */}
           {result && (
             <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid #10b981' }}>
               <h2 style={{ color: '#10b981', marginBottom: '1rem' }}>Solve Complete!</h2>
               <p style={{ marginBottom: '1rem', color: '#94a3b8' }}>
-                Tiles played from hand: <strong style={{ color: 'white' }}>{result.tilesPlayedCount}</strong>
+                Tiles played from hand: <strong style={{ color: 'white' }}>{result.tilesPlayed}</strong>
               </p>
 
               <h4 style={{ marginBottom: '0.5rem' }}>Optimized Board State</h4>
               <div className="board-grid" style={{ minHeight: 'auto', padding: '1rem 0' }}>
-                {result.newBoard.map((g, i) => (
+                {result.board.map((g, i) => (
                   <div key={i} className="group-container">
-                    {g.tiles.map((t, idx) => renderTile(t, idx))}
+                    {g.slots.map((s, idx) => renderSlot(s, idx))}
                     <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px', fontSize: '0.8rem', color: '#64748b' }}>
                       {g.type}
                     </div>
