@@ -46,9 +46,15 @@ public class SolverController : ControllerBase
 
     private static BoardState MapBoard(List<GroupDto> dtos)
     {
-        if (dtos.Count > 0)
-            throw new NotSupportedException("board input is re-enabled in Task 4");
-        return BoardState.Empty;
+        var groups = new List<Group>();
+        foreach (var dto in dtos)
+        {
+            var type = Enum.Parse<GroupType>(dto.Type, ignoreCase: true);
+            if (!Group.TryFromTiles(type, dto.Tiles.Select(MapTile), out var group, out var error))
+                throw new ArgumentException(error);
+            groups.Add(group);
+        }
+        return new BoardState(groups);
     }
 
     private static Tile MapTile(TileDto dto)
