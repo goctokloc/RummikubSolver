@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Rummikub.Core\Rummikub.Core.csproj" />
     <ProjectReference Include="..\Rummikub.Solver\Rummikub.Solver.csproj" />
+    <ProjectReference Include="..\Rummikub.Server\Rummikub.Server.csproj" />
   </ItemGroup>
 
 </Project>

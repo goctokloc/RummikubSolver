@@ -1,6 +1,24 @@
 @Rummikub.Server_HostAddress = http://localhost:5155
 
-GET {{Rummikub.Server_HostAddress}}/weatherforecast/
-Accept: application/json
+POST {{Rummikub.Server_HostAddress}}/api/solver/solve
+Content-Type: application/json
+
+{
+  "hand": [
+    { "color": "Yellow", "value": 5 },
+    { "color": "Black", "value": 5 },
+    { "joker": true }
+  ],
+  "board": [
+    {
+      "type": "run",
+      "tiles": [
+        { "color": "Red", "value": 5 },
+        { "color": "Red", "value": 6 },
+        { "color": "Red", "value": 7 }
+      ]
+    }
+  ]
+}
 
 ###

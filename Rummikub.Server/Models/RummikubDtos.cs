@@ -1,27 +1,43 @@
 namespace Rummikub.Server.Models;
 
+/// <summary>A tile: <c>{ "joker": true }</c> or <c>{ "color": "Red", "value": 5 }</c>.</summary>
 public class TileDto
 {
     public string? Color { get; set; }
     public int? Value { get; set; }
-    public bool IsJoker { get; set; }
+    public bool? Joker { get; set; }
+}
+
+/// <summary>A board group as entered by the user; joker positions are inferred.</summary>
+public class GroupInputDto
+{
+    public string Type { get; set; } = string.Empty;
+    public List<TileDto>? Tiles { get; set; }
+}
+
+public class SolveRequest
+{
+    public List<TileDto>? Hand { get; set; }
+    public List<GroupInputDto>? Board { get; set; }
+}
+
+/// <summary>One position in a group: the tile it represents, and whether a joker fills it.</summary>
+public class SlotDto
+{
+    public string Color { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public bool Joker { get; set; }
 }
 
 public class GroupDto
 {
     public string Type { get; set; } = string.Empty;
-    public List<TileDto> Tiles { get; set; } = new();
+    public List<SlotDto> Slots { get; set; } = [];
 }
 
-public class SolveRequestDto
+public class SolveResponse
 {
-    public List<TileDto> Hand { get; set; } = new();
-    public List<GroupDto> Board { get; set; } = new();
-}
-
-public class SolveResponseDto
-{
-    public List<TileDto> PlayedTiles { get; set; } = new();
-    public List<GroupDto> NewBoard { get; set; } = new();
-    public int TilesPlayedCount { get; set; }
+    public List<TileDto> PlayedTiles { get; set; } = [];
+    public List<GroupDto> Board { get; set; } = [];
+    public int TilesPlayed { get; set; }
 }
