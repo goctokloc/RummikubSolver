@@ -11,12 +11,7 @@ public sealed record BoardState : IEquatable<BoardState>
 
     public BoardState(IEnumerable<Group> groups)
     {
-        // canonical ordering: size, type, then tile hashes
-        Groups = groups
-            .OrderBy(g => g.Tiles.Count)
-            .ThenBy(g => g.Type)
-            .ThenBy(g => string.Join(",", g.Tiles.Select(t => t.GetHashCode())))
-            .ToArray();
+        Groups = groups.Order().ToArray();
     }
 
     public BoardState AddGroup(Group group)

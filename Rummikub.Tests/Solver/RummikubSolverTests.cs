@@ -199,13 +199,7 @@ public class RummikubSolverTests
     public void Solver_Splits_Existing_Run()
     {
         BoardState board = new BoardState([
-            new Group(GroupType.Run, [
-                Tile.Of(Color.Red, 3),
-                Tile.Of(Color.Red, 4),
-                Tile.Of(Color.Red, 5),
-                Tile.Of(Color.Red, 6),
-                Tile.Of(Color.Red, 7)
-            ])
+            Run.Create(Color.Red, 3, 5, 0)
         ]);
 
         Hand hand = new([
@@ -224,12 +218,7 @@ public class RummikubSolverTests
     public void Solver_Steals_Tile_From_Set()
     {
         BoardState board = new BoardState([
-            new Group(GroupType.Set, [
-                Tile.Of(Color.Red, 5),
-                Tile.Of(Color.Blue, 5),
-                Tile.Of(Color.Black, 5),
-                Tile.Of(Color.Yellow, 5)
-            ])
+            Set.Create(5, 0b1111, 0)
         ]);
 
         Hand hand = new([
@@ -246,19 +235,10 @@ public class RummikubSolverTests
     }
 
     [Test]
-    public void Solver_Invalid_Board_Yields_Empty_If_Cannot_Fix()
+    public void Solver_Does_Not_Throw_With_Three_Jokers_In_Pool()
     {
-        BoardState board = new BoardState([
-            new Group(GroupType.Set, [
-                Tile.Of(Color.Red, 1),
-                Tile.Of(Color.Blue, 2),
-                Tile.Of(Color.Black, 3)
-            ])
-        ]);
-
-        Hand hand = new([Tile.Of(Color.Yellow, 2)]);
-
-        var result = _solver.SolveMaxTiles(hand, board);
-        Assert.That(result, Is.EqualTo(SolverResult.Empty));
+        var hand = new Hand([Tile.Joker, Tile.Joker, Tile.Joker, Tile.Of(Color.Red, 5)]);
+        var result = _solver.SolveMaxTiles(hand, BoardState.Empty);
+        Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
     }
 }

@@ -7,8 +7,7 @@ internal static class GroupGenerator
 {
     public static IEnumerable<Group> GenerateValidGroups(MultiSet<Tile> pool)
     {
-        var distinctJokers = pool.DistinctItems.Where(t => t.IsJoker).ToList();
-        int jokerCount = distinctJokers.Sum(j => pool.CountOf(j));
+        int jokerCount = Math.Min(pool.CountOf(Tile.Joker), Group.MaxJokers);
 
         var regularTiles = pool.DistinctItems.Where(t => !t.IsJoker).ToList();
 
@@ -18,7 +17,7 @@ internal static class GroupGenerator
         {
             var availableTiles = valueGroup.ToList();
             int maxColors = availableTiles.Count;
-            
+
             for (int size = 3; size <= 4; size++)
             {
                 int minRegular = Math.Max(1, size - jokerCount);
@@ -29,19 +28,11 @@ internal static class GroupGenerator
                     int neededJokers = size - numReg;
                     foreach (var subset in Combinatorics.Combinations(availableTiles, numReg))
                     {
-                        var groupTiles = new List<Tile>(subset);
-                        int jokersAdded = 0;
-                        foreach (var j in distinctJokers)
-                        {
-                            int count = pool.CountOf(j);
-                            for (int i = 0; i < count && jokersAdded < neededJokers; i++)
-                            {
-                                groupTiles.Add(j);
-                                jokersAdded++;
-                            }
-                        }
-                        
-                        yield return new Group(GroupType.Set, groupTiles);
+                        byte realColors = 0;
+                        foreach (var tile in subset)
+                            realColors |= (byte)(1 << (int)tile.Color);
+
+                        yield return Set.CreateFillingJokers(valueGroup.Key, realColors, neededJokers);
                     }
                 }
             }
@@ -51,53 +42,36 @@ internal static class GroupGenerator
         var byColor = regularTiles.GroupBy(t => t.Color);
         foreach (var colorGroup in byColor)
         {
-            var avColor = colorGroup.OrderBy(t => t.Value).ToList();
-            var availableValues = avColor.Select(t => t.Value).ToHashSet();
+            var availableValues = colorGroup.Select(t => t.Value).ToHashSet();
             var color = colorGroup.Key;
 
             for (int startVal = 1; startVal <= 13; startVal++)
             {
                 for (int length = 3; length <= 13 - startVal + 1; length++)
                 {
-                    var runTiles = new List<Tile>();
+                    ushort jokerMask = 0;
                     int usedJokers = 0;
                     bool possible = true;
 
                     for (int step = 0; step < length; step++)
                     {
-                        int currentVal = startVal + step;
-                        if (availableValues.Contains(currentVal))
+                        if (availableValues.Contains(startVal + step))
+                            continue;
+
+                        if (usedJokers < jokerCount)
                         {
-                            runTiles.Add(Tile.Of(color, currentVal));
+                            usedJokers++;
+                            jokerMask |= (ushort)(1 << step);
                         }
                         else
                         {
-                            if (usedJokers < jokerCount)
-                            {
-                                usedJokers++;
-                            }
-                            else
-                            {
-                                possible = false;
-                                break;
-                            }
+                            possible = false;
+                            break;
                         }
                     }
 
                     if (possible)
-                    {
-                        int jokersAdded = 0;
-                        foreach (var j in distinctJokers)
-                        {
-                            int count = pool.CountOf(j);
-                            for (int i = 0; i < count && jokersAdded < usedJokers; i++)
-                            {
-                                runTiles.Add(j);
-                                jokersAdded++;
-                            }
-                        }
-                        yield return new Group(GroupType.Run, runTiles);
-                    }
+                        yield return Run.Create(color, startVal, length, jokerMask);
                 }
             }
         }

@@ -8,9 +8,10 @@ var hand = new Hand(
     Tile.Joker // Joker,
 ]);
 
-var board = new BoardState([new Group(GroupType.Run, [Tile.Of(Color.Blue, 5), Tile.Of(Color.Blue, 6), Tile.Of(Color.Blue, 7), Tile.Of(Color.Blue, 8), Tile.Of(Color.Blue, 9)]),
-    new Group(GroupType.Run, [Tile.Of(Color.Red, 5), Tile.Of(Color.Red, 6), Tile.Of(Color.Red, 7), Tile.Of(Color.Red, 8)]),
-    new Group(GroupType.Set, [Tile.Of(Color.Yellow, 9), Tile.Of(Color.Black, 9), Tile.Joker])]);
+var board = new BoardState([
+    Run.Create(Color.Blue, 5, 5, 0),
+    Run.Create(Color.Red, 5, 4, 0),
+    Set.Create(9, 0b1101, 0b0001)]); // Yellow 9, Black 9, joker as Red 9
 
 var solver = new RummikubSolver();
 

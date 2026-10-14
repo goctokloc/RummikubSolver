@@ -1,36 +1,40 @@
+using System.Diagnostics;
+
 namespace Rummikub.Core;
 
-public sealed record Group : IEquatable<Group>
+/// <summary>
+/// A legal meld: either a <see cref="Run"/> or a <see cref="Set"/>.
+/// Instances are valid by construction; jokers are positions in the structure.
+/// </summary>
+public abstract record Group : IComparable<Group>
 {
-    public GroupType Type { get; }
-    public IReadOnlyList<Tile> Tiles { get; }
+    public const int MinSize = 3;
+    public const int MaxJokers = 2;
 
-    public Group(GroupType groupType, IEnumerable<Tile> tiles)
+    private protected Group()
     {
-        Type = groupType;
-
-        Tiles = [.. tiles
-            .OrderBy(t => t)];
     }
 
-    public bool Equals(Group? other)
-    {
-        if (other is null)
-            return false;
-        if (Type != other.Type)
-            return false;
-        return Tiles.SequenceEqual(other.Tiles);
-    }
+    public abstract GroupType Type { get; }
 
-    public override int GetHashCode()
+    /// <summary>Ordered positions: runs by value, sets by color.</summary>
+    public abstract IReadOnlyList<GroupSlot> Slots { get; }
+
+    public IEnumerable<Tile> Tiles => Slots.Select(s => s.Tile);
+
+    public abstract int Count { get; }
+
+    public abstract int JokerCount { get; }
+
+    public int CompareTo(Group? other) => (this, other) switch
     {
-        unchecked
-        {
-            int hash = 17;
-            hash = hash * 31 + Type.GetHashCode();
-            foreach (var tile in Tiles)
-                hash = hash * 31 + tile.GetHashCode();
-            return hash;
-        }
-    }
+        (_, null) => 1,
+        (Set a, Set b) => (a.Value, a.Colors, a.JokerColors).CompareTo((b.Value, b.Colors, b.JokerColors)),
+        (Run a, Run b) => (a.Color, a.Start, a.Length, a.JokerMask).CompareTo((b.Color, b.Start, b.Length, b.JokerMask)),
+        (Set, Run) => -1,
+        (Run, Set) => 1,
+        _ => throw new UnreachableException()
+    };
+
+    public sealed override string ToString() => $"{Type}[{string.Join(" ", Tiles)}]";
 }
