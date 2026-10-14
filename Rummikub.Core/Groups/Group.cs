@@ -1,6 +1,4 @@
-using Rummikub.Core.Tiles;
-
-namespace Rummikub.Core.Groups;
+namespace Rummikub.Core;
 
 public sealed record Group : IEquatable<Group>
 {
@@ -12,9 +10,7 @@ public sealed record Group : IEquatable<Group>
         Type = groupType;
 
         Tiles = [.. tiles
-            .OrderBy(t => t.IsJoker)
-            .ThenBy(t => t.Color)
-            .ThenBy(t => t.Value)];
+            .OrderBy(t => t)];
     }
 
     public bool Equals(Group? other)

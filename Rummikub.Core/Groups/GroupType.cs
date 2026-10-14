@@ -1,4 +1,4 @@
-namespace Rummikub.Core.Groups;
+namespace Rummikub.Core;
 
 public enum GroupType
 {

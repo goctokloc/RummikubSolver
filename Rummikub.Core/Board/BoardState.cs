@@ -1,8 +1,6 @@
 using Rummikub.Core.Common;
-using Rummikub.Core.Groups;
-using Rummikub.Core.Tiles;
 
-namespace Rummikub.Core.Board;
+namespace Rummikub.Core;
 
 public sealed record BoardState : IEquatable<BoardState>
 {

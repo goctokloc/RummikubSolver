@@ -1,6 +1,3 @@
-using Rummikub.Core.Tiles;
+namespace Rummikub.Core;
 
-namespace Rummikub.Core.Hand
-{
-    public sealed record Hand(IReadOnlyList<Tile> Tiles);
-}
+public sealed record Hand(IReadOnlyList<Tile> Tiles);

@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Rummikub.Core.Board;
-using Rummikub.Core.Groups;
-using Rummikub.Core.Hand;
-using Rummikub.Core.Tiles;
+using Rummikub.Core;
 using Rummikub.Server.Models;
 using Rummikub.Solver.Solver;
 
@@ -61,21 +58,17 @@ public class SolverController : ControllerBase
 
     private static Tile MapTile(TileDto dto)
     {
-        Color? color = null;
-        if (!string.IsNullOrEmpty(dto.Color) && Enum.TryParse<Color>(dto.Color, true, out var c))
-        {
-            color = c;
-        }
-
-        return new Tile(color, dto.Value, dto.IsJoker);
+        return dto.IsJoker
+            ? Tile.Joker
+            : Tile.Of(Enum.Parse<Color>(dto.Color!, ignoreCase: true), dto.Value!.Value);
     }
 
     private static TileDto MapTileDto(Tile tile)
     {
         return new TileDto
         {
-            Color = tile.Color?.ToString(),
-            Value = tile.Value,
+            Color = tile.IsJoker ? null : tile.Color.ToString(),
+            Value = tile.IsJoker ? null : tile.Value,
             IsJoker = tile.IsJoker
         };
     }

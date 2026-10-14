@@ -1,7 +1,4 @@
-using Rummikub.Core.Board;
-using Rummikub.Core.Groups;
-using Rummikub.Core.Hand;
-using Rummikub.Core.Tiles;
+using Rummikub.Core;
 using Rummikub.Solver.Solver;
 
 namespace Rummikub.Tests.Solver;
@@ -30,9 +27,9 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(Color.Red, 5, false)
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Of(Color.Red, 5)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -50,9 +47,9 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 7, false),
-            new Tile(Color.Blue, 7, false),
-            new Tile(Color.Black, 7, false)
+            Tile.Of(Color.Red, 7),
+            Tile.Of(Color.Blue, 7),
+            Tile.Of(Color.Black, 7)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -70,12 +67,12 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 7, false),
-            new Tile(Color.Blue, 7, false),
-            new Tile(Color.Black, 7, false),
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(Color.Red, 5, false)
+            Tile.Of(Color.Red, 7),
+            Tile.Of(Color.Blue, 7),
+            Tile.Of(Color.Black, 7),
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Of(Color.Red, 5)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -92,13 +89,13 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 7, false),
-            new Tile(Color.Blue, 7, false),
-            new Tile(Color.Black, 7, false),
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(Color.Red, 5, false),
-            new Tile(Color.Yellow, 9, false) //junk
+            Tile.Of(Color.Red, 7),
+            Tile.Of(Color.Blue, 7),
+            Tile.Of(Color.Black, 7),
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Of(Color.Red, 5),
+            Tile.Of(Color.Yellow, 9) //junk
         ]);
         BoardState board = BoardState.Empty;
 
@@ -107,7 +104,7 @@ public class RummikubSolverTests
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(6));
             Assert.That(result.Board.Groups, Has.Count.EqualTo(2));
-            Assert.That(result.PlayedTiles, Does.Not.Contain(new Tile(Color.Yellow, 9, false)));
+            Assert.That(result.PlayedTiles, Does.Not.Contain(Tile.Of(Color.Yellow, 9)));
         });
     }
 
@@ -116,9 +113,9 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 7, false),
-            new Tile(Color.Blue, 7, false),
-            new Tile(null, null, true)
+            Tile.Of(Color.Red, 7),
+            Tile.Of(Color.Blue, 7),
+            Tile.Joker
         ]);
         BoardState board = BoardState.Empty;
 
@@ -128,7 +125,7 @@ public class RummikubSolverTests
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
             Assert.That(result.Board.Groups, Has.Count.EqualTo(1));
             Assert.That(result.Board.Groups[0].Type, Is.EqualTo(GroupType.Set));
-            Assert.That(result.Board.Groups[0].Tiles, Does.Contain(new Tile(null, null, true)));
+            Assert.That(result.Board.Groups[0].Tiles, Does.Contain(Tile.Joker));
         });
     }
 
@@ -137,9 +134,9 @@ public class RummikubSolverTests
     {
         Hand hand = new(
         [
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(null, null, true)
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Joker
         ]);
         BoardState board = BoardState.Empty;
 
@@ -149,15 +146,15 @@ public class RummikubSolverTests
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
             Assert.That(result.Board.Groups, Has.Count.EqualTo(1));
             Assert.That(result.Board.Groups[0].Type, Is.EqualTo(GroupType.Run));
-            Assert.That(result.Board.Groups[0].Tiles, Does.Contain(new Tile(null, null, true)));
+            Assert.That(result.Board.Groups[0].Tiles, Does.Contain(Tile.Joker));
         });
     }
 
     [Test]
     public void Solver_Hand_With_Only_Two_Tiles_Should_Return_Empty()
     {
-        Hand hand = new([new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false)
+        Hand hand = new([Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -170,10 +167,10 @@ public class RummikubSolverTests
     public void Solver_Should_Prefer_Larger_Groups()
     {
         Hand hand = new([
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(Color.Red, 5, false),
-            new Tile(Color.Red, 6, false)
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Of(Color.Red, 5),
+            Tile.Of(Color.Red, 6)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -186,9 +183,9 @@ public class RummikubSolverTests
     public void Solver_Repeated_Calls_Are_Idempotent()
     {
         Hand hand = new([
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false),
-            new Tile(Color.Red, 5, false)
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4),
+            Tile.Of(Color.Red, 5)
         ]);
         BoardState board = BoardState.Empty;
 
@@ -203,16 +200,16 @@ public class RummikubSolverTests
     {
         BoardState board = new BoardState([
             new Group(GroupType.Run, [
-                new Tile(Color.Red, 3, false),
-                new Tile(Color.Red, 4, false),
-                new Tile(Color.Red, 5, false),
-                new Tile(Color.Red, 6, false),
-                new Tile(Color.Red, 7, false)
+                Tile.Of(Color.Red, 3),
+                Tile.Of(Color.Red, 4),
+                Tile.Of(Color.Red, 5),
+                Tile.Of(Color.Red, 6),
+                Tile.Of(Color.Red, 7)
             ])
         ]);
 
         Hand hand = new([
-            new Tile(Color.Red, 5, false)
+            Tile.Of(Color.Red, 5)
         ]);
 
         var result = _solver.SolveMaxTiles(hand, board);
@@ -228,16 +225,16 @@ public class RummikubSolverTests
     {
         BoardState board = new BoardState([
             new Group(GroupType.Set, [
-                new Tile(Color.Red, 5, false),
-                new Tile(Color.Blue, 5, false),
-                new Tile(Color.Black, 5, false),
-                new Tile(Color.Yellow, 5, false)
+                Tile.Of(Color.Red, 5),
+                Tile.Of(Color.Blue, 5),
+                Tile.Of(Color.Black, 5),
+                Tile.Of(Color.Yellow, 5)
             ])
         ]);
 
         Hand hand = new([
-            new Tile(Color.Red, 3, false),
-            new Tile(Color.Red, 4, false)
+            Tile.Of(Color.Red, 3),
+            Tile.Of(Color.Red, 4)
         ]);
 
         var result = _solver.SolveMaxTiles(hand, board);
@@ -253,13 +250,13 @@ public class RummikubSolverTests
     {
         BoardState board = new BoardState([
             new Group(GroupType.Set, [
-                new Tile(Color.Red, 1, false),
-                new Tile(Color.Blue, 2, false),
-                new Tile(Color.Black, 3, false)
+                Tile.Of(Color.Red, 1),
+                Tile.Of(Color.Blue, 2),
+                Tile.Of(Color.Black, 3)
             ])
         ]);
 
-        Hand hand = new([new Tile(Color.Yellow, 2, false)]);
+        Hand hand = new([Tile.Of(Color.Yellow, 2)]);
 
         var result = _solver.SolveMaxTiles(hand, board);
         Assert.That(result, Is.EqualTo(SolverResult.Empty));

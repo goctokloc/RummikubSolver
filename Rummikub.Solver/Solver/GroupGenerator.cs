@@ -1,6 +1,5 @@
 using Rummikub.Core.Common;
-using Rummikub.Core.Groups;
-using Rummikub.Core.Tiles;
+using Rummikub.Core;
 
 namespace Rummikub.Solver.Solver;
 
@@ -14,7 +13,7 @@ internal static class GroupGenerator
         var regularTiles = pool.DistinctItems.Where(t => !t.IsJoker).ToList();
 
         // 1. Generate Valid Sets
-        var byValue = regularTiles.GroupBy(t => t.Value!.Value);
+        var byValue = regularTiles.GroupBy(t => t.Value);
         foreach (var valueGroup in byValue)
         {
             var availableTiles = valueGroup.ToList();
@@ -49,11 +48,11 @@ internal static class GroupGenerator
         }
 
         // 2. Generate Valid Runs
-        var byColor = regularTiles.GroupBy(t => t.Color!.Value);
+        var byColor = regularTiles.GroupBy(t => t.Color);
         foreach (var colorGroup in byColor)
         {
-            var avColor = colorGroup.OrderBy(t => t.Value!.Value).ToList();
-            var availableValues = avColor.Select(t => t.Value!.Value).ToHashSet();
+            var avColor = colorGroup.OrderBy(t => t.Value).ToList();
+            var availableValues = avColor.Select(t => t.Value).ToHashSet();
             var color = colorGroup.Key;
 
             for (int startVal = 1; startVal <= 13; startVal++)
@@ -69,7 +68,7 @@ internal static class GroupGenerator
                         int currentVal = startVal + step;
                         if (availableValues.Contains(currentVal))
                         {
-                            runTiles.Add(new Tile(color, currentVal, false));
+                            runTiles.Add(Tile.Of(color, currentVal));
                         }
                         else
                         {

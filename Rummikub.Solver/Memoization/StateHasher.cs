@@ -1,4 +1,4 @@
-using Rummikub.Core.Tiles;
+using Rummikub.Core;
 using Rummikub.Core.Common;
 
 namespace Rummikub.Solver.Memoization;

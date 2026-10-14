@@ -1,8 +1,5 @@
-using Rummikub.Core.Board;
+using Rummikub.Core;
 using Rummikub.Core.Common;
-using Rummikub.Core.Groups;
-using Rummikub.Core.Hand;
-using Rummikub.Core.Tiles;
 using Rummikub.Solver.Memoization;
 
 namespace Rummikub.Solver.Solver

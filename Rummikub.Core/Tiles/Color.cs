@@ -1,4 +1,4 @@
-namespace Rummikub.Core.Tiles;
+namespace Rummikub.Core;
 
 public enum Color
 {

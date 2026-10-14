@@ -1,5 +1,4 @@
-using Rummikub.Core.Board;
-using Rummikub.Core.Tiles;
+using Rummikub.Core;
 
 namespace Rummikub.Solver.Solver;
 
