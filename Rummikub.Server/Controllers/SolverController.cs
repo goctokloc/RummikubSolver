@@ -41,7 +41,7 @@ public class SolverController : ControllerBase
 
     private static Hand MapHand(List<TileDto> dtos)
     {
-        return new Hand(dtos.Select(MapTile).ToList());
+        return Hand.Of(dtos.Select(MapTile));
     }
 
     private static BoardState MapBoard(List<GroupDto> dtos)
@@ -54,7 +54,7 @@ public class SolverController : ControllerBase
                 throw new ArgumentException(error);
             groups.Add(group);
         }
-        return new BoardState(groups);
+        return BoardState.Of(groups);
     }
 
     private static Tile MapTile(TileDto dto)

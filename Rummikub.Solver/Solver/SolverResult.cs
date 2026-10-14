@@ -1,29 +1,13 @@
 using Rummikub.Core;
+using Rummikub.Core.Common;
 
 namespace Rummikub.Solver.Solver;
 
-public sealed record SolverResult(BoardState Board, IReadOnlyList<Tile> PlayedTiles) : IEquatable<SolverResult>
+public sealed record SolverResult(BoardState Board, EquatableArray<Tile> PlayedTiles)
 {
-    public static SolverResult Empty { get; } = new SolverResult(BoardState.Empty, []);
+    public static SolverResult Empty { get; } = new(BoardState.Empty, EquatableArray<Tile>.Empty);
 
-    public bool Equals(SolverResult? other)
-    {
-        if (other is null)
-            return false;
-        if (!Board.Equals(other.Board))
-            return false;
-        return PlayedTiles.SequenceEqual(other.PlayedTiles);
-    }
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            int hash = 17;
-            hash = hash * 31 + Board.GetHashCode();
-            foreach (var tile in PlayedTiles)
-                hash = hash * 31 + tile.GetHashCode();
-            return hash;
-        }
-    }
+    /// <summary>Creates a result with <paramref name="playedTiles"/> sorted, so search order does not affect equality.</summary>
+    public static SolverResult Create(BoardState board, IEnumerable<Tile> playedTiles) =>
+        new(board, playedTiles.Order().ToEquatableArray());
 }

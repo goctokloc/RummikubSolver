@@ -1,14 +1,14 @@
 ﻿using Rummikub.Core;
 using Rummikub.Solver.Solver;
 
-var hand = new Hand(
+var hand = Hand.Of(
 [
     Tile.Of(Color.Yellow, 5),
     Tile.Of(Color.Black, 5),
     Tile.Joker // Joker,
 ]);
 
-var board = new BoardState([
+var board = BoardState.Of([
     Run.Create(Color.Blue, 5, 5, 0),
     Run.Create(Color.Red, 5, 4, 0),
     Set.Create(9, 0b1101, 0b0001)]); // Yellow 9, Black 9, joker as Red 9

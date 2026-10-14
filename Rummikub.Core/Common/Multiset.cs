@@ -105,35 +105,4 @@ public sealed class MultiSet<T> : IEnumerable<T> where T : notnull
     {
         return "{" + string.Join(", ", _counts.Select(kvp => $"{kvp.Key}: {kvp.Value}")) + "}";
     }
-
-    public override bool Equals(object? obj)
-    {
-        if (obj is not MultiSet<T> other)
-            return false;
-
-        if (_counts.Count != other._counts.Count)
-            return false;
-
-        foreach (var kvp in _counts)
-        {
-            if (!other._counts.TryGetValue(kvp.Key, out var otherCount) || otherCount != kvp.Value)
-                return false;
-        }
-
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            int hash = 17;
-            foreach (var (item, count) in _counts.OrderBy(x => x.Key?.GetHashCode() ?? 0))
-            {
-                hash = hash * 31 + (item?.GetHashCode() ?? 0);
-                hash = hash * 31 + count.GetHashCode();
-            }
-            return hash;
-        }
-    }
 }

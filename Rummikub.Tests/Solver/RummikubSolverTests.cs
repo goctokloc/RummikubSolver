@@ -14,7 +14,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Should_Return_Empty_Result_When_Hand_Is_Empty()
     {
-        Hand hand = new([]);
+        Hand hand = Hand.Of([]);
         BoardState board = BoardState.Empty;
 
         var result = _solver.SolveMaxTiles(hand, board);
@@ -25,7 +25,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Single_Valid_Run_Should_Play_All_Tiles()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4),
@@ -45,7 +45,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Single_Valid_Set_Should_Play_All_Tiles()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 7),
             Tile.Of(Color.Blue, 7),
@@ -65,7 +65,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Hand_With_Set_And_Run_Should_Play_All_Tiles()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 7),
             Tile.Of(Color.Blue, 7),
@@ -87,7 +87,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Hand_With_Set_And_Run_Should_Play_All_Available_Tiles()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 7),
             Tile.Of(Color.Blue, 7),
@@ -111,7 +111,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Hand_With_Joker_Should_Complete_Group()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 7),
             Tile.Of(Color.Blue, 7),
@@ -132,7 +132,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Hand_With_Joker_Should_Complete_Run()
     {
-        Hand hand = new(
+        Hand hand = Hand.Of(
         [
             Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4),
@@ -153,7 +153,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Hand_With_Only_Two_Tiles_Should_Return_Empty()
     {
-        Hand hand = new([Tile.Of(Color.Red, 3),
+        Hand hand = Hand.Of([Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4)
         ]);
         BoardState board = BoardState.Empty;
@@ -166,7 +166,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Should_Prefer_Larger_Groups()
     {
-        Hand hand = new([
+        Hand hand = Hand.Of([
             Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4),
             Tile.Of(Color.Red, 5),
@@ -182,7 +182,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Repeated_Calls_Are_Idempotent()
     {
-        Hand hand = new([
+        Hand hand = Hand.Of([
             Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4),
             Tile.Of(Color.Red, 5)
@@ -198,11 +198,11 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Splits_Existing_Run()
     {
-        BoardState board = new BoardState([
+        BoardState board = BoardState.Of([
             Run.Create(Color.Red, 3, 5, 0)
         ]);
 
-        Hand hand = new([
+        Hand hand = Hand.Of([
             Tile.Of(Color.Red, 5)
         ]);
 
@@ -217,11 +217,11 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Steals_Tile_From_Set()
     {
-        BoardState board = new BoardState([
+        BoardState board = BoardState.Of([
             Set.Create(5, 0b1111, 0)
         ]);
 
-        Hand hand = new([
+        Hand hand = Hand.Of([
             Tile.Of(Color.Red, 3),
             Tile.Of(Color.Red, 4)
         ]);
@@ -237,7 +237,7 @@ public class RummikubSolverTests
     [Test]
     public void Solver_Does_Not_Throw_With_Three_Jokers_In_Pool()
     {
-        var hand = new Hand([Tile.Joker, Tile.Joker, Tile.Joker, Tile.Of(Color.Red, 5)]);
+        var hand = Hand.Of([Tile.Joker, Tile.Joker, Tile.Joker, Tile.Of(Color.Red, 5)]);
         var result = _solver.SolveMaxTiles(hand, BoardState.Empty);
         Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
     }

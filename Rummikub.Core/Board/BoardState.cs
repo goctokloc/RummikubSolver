@@ -2,36 +2,21 @@ using Rummikub.Core.Common;
 
 namespace Rummikub.Core;
 
-public sealed record BoardState : IEquatable<BoardState>
+/// <summary>The groups on the table, kept in canonical (sorted) order so equal boards compare equal.</summary>
+public sealed record BoardState
 {
-    public IReadOnlyList<Group> Groups { get; }
-
-    public static BoardState Empty { get; } =
-        new BoardState(Array.Empty<Group>());
-
-    public BoardState(IEnumerable<Group> groups)
+    private BoardState(EquatableArray<Group> groups)
     {
-        Groups = groups.Order().ToArray();
+        Groups = groups;
     }
 
-    public BoardState AddGroup(Group group)
-        => new BoardState(Groups.Append(group));
+    public static BoardState Empty { get; } = new(EquatableArray<Group>.Empty);
 
-    public bool Equals(BoardState? other)
-    {
-        if (other is null)
-            return false;
-        return Groups.SequenceEqual(other.Groups);
-    }
+    public EquatableArray<Group> Groups { get; }
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            int hash = 17;
-            foreach (var group in Groups)
-                hash = hash * 31 + group.GetHashCode();
-            return hash;
-        }
-    }
+    public IEnumerable<Tile> Tiles => Groups.SelectMany(g => g.Tiles);
+
+    public static BoardState Of(IEnumerable<Group> groups) => new(groups.Order().ToEquatableArray());
+
+    public BoardState Add(Group group) => Of(Groups.Append(group));
 }

@@ -97,11 +97,10 @@ namespace Rummikub.Solver.Solver
                         var subResult = Dfs(nextPool, nextMandatory, allGroups);
                         if (subResult != null)
                         {
-                            var played = new List<Tile>(subResult.PlayedTiles);
-                            played.AddRange(handTilesUsed);
+                            var played = subResult.PlayedTiles.Concat(handTilesUsed).ToList();
                             if (bestResult == null || played.Count > bestResult.PlayedTiles.Count)
                             {
-                                bestResult = new SolverResult(subResult.Board.AddGroup(g.Group), played);
+                                bestResult = SolverResult.Create(subResult.Board.Add(g.Group), played);
                             }
                         }
                     }
@@ -148,11 +147,10 @@ namespace Rummikub.Solver.Solver
                             var subResult = Dfs(nextPool, mandatory, allGroups);
                             if (subResult != null)
                             {
-                                var played = new List<Tile>(subResult.PlayedTiles);
-                                played.AddRange(handTilesUsed);
+                                var played = subResult.PlayedTiles.Concat(handTilesUsed).ToList();
                                 if (played.Count > bestResult.PlayedTiles.Count)
                                 {
-                                    bestResult = new SolverResult(subResult.Board.AddGroup(g.Group), played);
+                                    bestResult = SolverResult.Create(subResult.Board.Add(g.Group), played);
                                 }
                             }
                         }
