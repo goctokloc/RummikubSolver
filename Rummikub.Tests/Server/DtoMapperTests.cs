@@ -13,7 +13,7 @@ public class DtoMapperTests
 
     static IReadOnlyDictionary<string, string> Errors(SolveRequest req)
     {
-        Assert.That(DtoMapper.TryMapRequest(req, out _, out _, out var errors), Is.False);
+        Assert.That(DtoMapper.TryMapRequest(req, out _, out _, out _, out var errors), Is.False);
         return errors;
     }
 
@@ -25,7 +25,7 @@ public class DtoMapperTests
             Hand = [T("red", 5), J()],
             Board = [new GroupInputDto { Type = "run", Tiles = [T("Blue", 3), J(), T("Blue", 5)] }],
         };
-        Assert.That(DtoMapper.TryMapRequest(req, out var hand, out var board, out var errors), Is.True);
+        Assert.That(DtoMapper.TryMapRequest(req, out var hand, out var board, out _, out var errors), Is.True);
         Assert.That(errors, Is.Empty);
         Assert.That(hand, Is.EqualTo(Hand.Of([Tile.Of(Color.Red, 5), Tile.Joker])));
         Assert.That(board, Is.EqualTo(BoardState.Of([Run.Create(Color.Blue, 3, 3, 0b010)])));
@@ -34,7 +34,7 @@ public class DtoMapperTests
     [Test]
     public void Null_Lists_Are_Empty()
     {
-        Assert.That(DtoMapper.TryMapRequest(new SolveRequest(), out var hand, out var board, out _), Is.True);
+        Assert.That(DtoMapper.TryMapRequest(new SolveRequest(), out var hand, out var board, out _, out _), Is.True);
         Assert.That(hand, Is.EqualTo(Hand.Empty));
         Assert.That(board, Is.EqualTo(BoardState.Empty));
     }
@@ -101,6 +101,30 @@ public class DtoMapperTests
             ["board[0]"] = "unknown group type 'Run,Set'",
         }));
     }
+
+    [Test]
+    public void Missing_Options_Use_Defaults()
+    {
+        Assert.That(DtoMapper.TryMapRequest(new SolveRequest(), out _, out _, out var options, out _), Is.True);
+        Assert.That(options, Is.EqualTo(new SolverOptions()));
+    }
+
+    [Test]
+    public void Maps_Options()
+    {
+        var req = new SolveRequest { Options = new SolveOptionsDto { InitialMeldDone = false, Objective = "points", KeepJokers = true } };
+        Assert.That(DtoMapper.TryMapRequest(req, out _, out _, out var options, out _), Is.True);
+        Assert.That(options, Is.EqualTo(new SolverOptions { InitialMeldDone = false, Objective = SolverObjective.Points, KeepJokers = true }));
+    }
+
+    [Test]
+    public void Unknown_Objective_Is_Reported() =>
+        Assert.That(Errors(new SolveRequest { Options = new SolveOptionsDto { Objective = "fun" } }),
+            Is.EquivalentTo(new Dictionary<string, string> { ["options.objective"] = "unknown objective 'fun'" }));
+
+    [Test]
+    public void Response_Carries_Optimality() =>
+        Assert.That(DtoMapper.ToResponse(SolverResult.Create(BoardState.Empty, [], isOptimal: false)).Optimal, Is.False);
 
     [Test]
     public void Response_Slots_Carry_Joker_Meaning()

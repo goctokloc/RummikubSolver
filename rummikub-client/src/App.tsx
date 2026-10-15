@@ -4,10 +4,11 @@ import './index.css';
 
 type TileDto = { color?: string; value?: number; joker?: boolean };
 type GroupInputDto = { type: string; tiles: TileDto[] };
-type SolveRequest = { hand: TileDto[]; board: GroupInputDto[] };
+type SolveOptions = { initialMeldDone: boolean; objective: 'TileCount' | 'Points'; keepJokers: boolean };
+type SolveRequest = { hand: TileDto[]; board: GroupInputDto[]; options: SolveOptions };
 type SlotDto = { color: string; value: number; joker: boolean };
 type GroupDto = { type: string; slots: SlotDto[] };
-type SolveResponse = { playedTiles: TileDto[]; board: GroupDto[]; tilesPlayed: number };
+type SolveResponse = { playedTiles: TileDto[]; board: GroupDto[]; tilesPlayed: number; optimal: boolean };
 type ValidationProblem = { errors?: Record<string, string[]> };
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5155';
@@ -26,6 +27,11 @@ export default function App() {
   const [tColor, setTColor] = useState('Red');
   const [tValue, setTValue] = useState(1);
   const [tIsJoker, setTIsJoker] = useState(false);
+
+  // Solver options
+  const [initialMeldDone, setInitialMeldDone] = useState(true);
+  const [objective, setObjective] = useState<SolveOptions['objective']>('TileCount');
+  const [keepJokers, setKeepJokers] = useState(false);
 
   // Group Builder Form
   const [gType, setGType] = useState('Set');
@@ -60,7 +66,7 @@ export default function App() {
     setResult(null);
     setErrors([]);
     try {
-      const payload: SolveRequest = { hand, board };
+      const payload: SolveRequest = { hand, board, options: { initialMeldDone, objective, keepJokers } };
       const response = await fetch(`${API_URL}/api/solver/solve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,6 +166,9 @@ export default function App() {
               <p style={{ marginBottom: '1rem', color: '#94a3b8' }}>
                 Tiles played from hand: <strong style={{ color: 'white' }}>{result.tilesPlayed}</strong>
               </p>
+              {!result.optimal && (
+                <p style={{ marginBottom: '1rem', color: '#f59e0b' }}>Not proven optimal</p>
+              )}
 
               <h4 style={{ marginBottom: '0.5rem' }}>Optimized Board State</h4>
               <div className="board-grid" style={{ minHeight: 'auto', padding: '1rem 0' }}>
@@ -236,6 +245,40 @@ export default function App() {
               </button>
             </div>
           )}
+
+          <div className="controls-header" style={{ marginTop: '1.5rem' }}>Solver Options</div>
+
+          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={initialMeldDone}
+              onChange={e => setInitialMeldDone(e.target.checked)}
+              id="initial-meld"
+            />
+            <label htmlFor="initial-meld">Initial meld made</label>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="objective">Objective</label>
+            <select
+              id="objective"
+              value={objective}
+              onChange={e => setObjective(e.target.value as SolveOptions['objective'])}
+            >
+              <option value="TileCount">Tile count</option>
+              <option value="Points">Points</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={keepJokers}
+              onChange={e => setKeepJokers(e.target.checked)}
+              id="keep-jokers"
+            />
+            <label htmlFor="keep-jokers">Keep jokers</label>
+          </div>
 
           <button
             className="btn btn-success"

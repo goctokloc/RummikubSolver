@@ -15,10 +15,19 @@ public class GroupInputDto
     public List<TileDto>? Tiles { get; set; }
 }
 
+/// <summary>Optional solver settings; omitted fields use the solver defaults.</summary>
+public class SolveOptionsDto
+{
+    public bool? InitialMeldDone { get; set; }
+    public string? Objective { get; set; }
+    public bool? KeepJokers { get; set; }
+}
+
 public class SolveRequest
 {
     public List<TileDto>? Hand { get; set; }
     public List<GroupInputDto>? Board { get; set; }
+    public SolveOptionsDto? Options { get; set; }
 }
 
 /// <summary>One position in a group: the tile it represents, and whether a joker fills it.</summary>
@@ -40,4 +49,5 @@ public class SolveResponse
     public List<TileDto> PlayedTiles { get; set; } = [];
     public List<GroupDto> Board { get; set; } = [];
     public int TilesPlayed { get; set; }
+    public bool Optimal { get; set; }
 }

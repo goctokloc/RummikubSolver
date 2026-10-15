@@ -18,7 +18,8 @@ Content-Type: application/json
         { "color": "Red", "value": 7 }
       ]
     }
-  ]
+  ],
+  "options": { "objective": "points" }
 }
 
 ###

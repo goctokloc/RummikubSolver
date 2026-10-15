@@ -12,6 +12,7 @@ public static class DtoMapper
         SolveRequest request,
         [NotNullWhen(true)] out Hand? hand,
         [NotNullWhen(true)] out BoardState? board,
+        [NotNullWhen(true)] out SolverOptions? options,
         out IReadOnlyDictionary<string, string> errors)
     {
         var found = new Dictionary<string, string>();
@@ -47,13 +48,18 @@ public static class DtoMapper
                 found[path] = error;
         }
 
+        var mapped = MapOptions(request.Options, found);
+
         errors = found;
         if (found.Count > 0)
         {
             hand = null;
             board = null;
+            options = null;
             return false;
         }
+
+        options = mapped;
 
         hand = Hand.Of(handTiles);
         board = BoardState.Of(groups);
@@ -64,7 +70,8 @@ public static class DtoMapper
     {
         PlayedTiles = result.PlayedTiles.Select(ToDto).ToList(),
         Board = result.Board.Groups.Select(ToDto).ToList(),
-        TilesPlayed = result.PlayedTiles.Count
+        TilesPlayed = result.PlayedTiles.Count,
+        Optimal = result.IsOptimal
     };
 
     public static TileDto ToDto(Tile tile) => tile.IsJoker
@@ -78,6 +85,24 @@ public static class DtoMapper
             .Select(s => new SlotDto { Color = s.Color.ToString(), Value = s.Value, Joker = s.Tile.IsJoker })
             .ToList()
     };
+
+    private static SolverOptions MapOptions(SolveOptionsDto? dto, Dictionary<string, string> errors)
+    {
+        var defaults = new SolverOptions();
+        if (dto is null)
+            return defaults;
+
+        var objective = defaults.Objective;
+        if (dto.Objective is not null && !TryParseEnum(dto.Objective, out objective))
+            errors["options.objective"] = $"unknown objective '{dto.Objective}'";
+
+        return defaults with
+        {
+            InitialMeldDone = dto.InitialMeldDone ?? defaults.InitialMeldDone,
+            Objective = objective,
+            KeepJokers = dto.KeepJokers ?? defaults.KeepJokers,
+        };
+    }
 
     private static List<Tile> MapTiles(List<TileDto>? dtos, string path, Dictionary<string, string> errors)
     {
