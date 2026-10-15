@@ -77,8 +77,11 @@ feasible, so every position has a valid answer.
   at most 2 bits. Sets: every value 1–13, every colour mask with 3 or 4 bits,
   every `JokerColors ⊆ Colors` with at most 2 bits. All built via
   `Run.Create` / `Set.Create`.
-- Columns with identical tile multisets are collapsed to one (keep the first
-  in enumeration order: sets before runs, lower start first).
+- Columns with identical tile multisets are collapsed to one, keeping the
+  reading with the highest represented points (so the initial meld sees the
+  best joker placement: R9 R10 J counts as R9–R11 = 30, not R8–R10 = 27);
+  ties keep the first in enumeration order (sets before runs, lower start
+  first). Resulting counts: 281 sets + 892 runs = 1173 columns.
 - Runs longer than 5 are not catalogue columns: any run of length ≥ 6 splits
   into runs of length 3–5, so they add nothing to the optimum.
 - Per solve, a column's upper bound is
