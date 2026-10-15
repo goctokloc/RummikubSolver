@@ -107,6 +107,39 @@ public class BranchAndBoundTests
         Assert.That(s.IsOptimal, Is.True);
     }
 
+    [Test] public void Dropped_Node_Clears_IsOptimal()
+    {
+        // An LP that reports an exactly integral but infeasible point with a bound above the incumbent: the node
+        // cannot be split or accepted, so it is dropped and the search must not claim optimality (final review F3).
+        var s = BranchAndBound.Solve(OddCycle(), [0, 0, 0], 1000, CancellationToken.None,
+            (_, _) => new LpResult(LpStatus.Optimal, 2, [1, 1, 0]));
+        Assert.That(s.Values, Is.EqualTo(new long[] { 0, 0, 0 }));
+        Assert.That(s.IsOptimal, Is.False);
+    }
+
+    [Test] public void Exhaustive_Search_Through_The_Lp_Seam_Is_Optimal()
+    {
+        // Same seam, honest LP: the flag stays true when no node is dropped.
+        var m = OddCycle();
+        var s = BranchAndBound.Solve(m, [0, 0, 0], 1000, CancellationToken.None, (lo, up) => SimplexSolver.Solve(m, lo, up));
+        Assert.That(s.Objective, Is.EqualTo(1));
+        Assert.That(s.IsOptimal, Is.True);
+    }
+
+    [Test] public void Failed_Lp_After_Improvement_Returns_Best_Incumbent_Not_Optimal()
+    {
+        // Root LP finds the integral optimum (1, 0, 0); a later LP failure must keep it, flagged non-optimal.
+        var calls = 0;
+        var s = BranchAndBound.Solve(OddCycle(), [0, 0, 0], 1000, CancellationToken.None,
+            (_, _) => ++calls == 1
+                ? new LpResult(LpStatus.Optimal, 1.5, [0.5, 0.5, 0.5])
+                : calls == 2
+                    ? new LpResult(LpStatus.Optimal, 1, [1, 0, 0])
+                    : new LpResult(LpStatus.Failed, double.NaN, []));
+        Assert.That(s.Values, Is.EqualTo(new long[] { 1, 0, 0 }));
+        Assert.That(s.IsOptimal, Is.False);
+    }
+
     // The dropped-node path needs an LP point that is exactly integral (or drifted outside its bounds) yet
     // infeasible, which a correct simplex does not return on these small models; ChooseBranch is tested directly.
     [Test] public void ChooseBranch_Exactly_Integral_Infeasible_Point_Cannot_Be_Split()

@@ -12,7 +12,16 @@ internal static class BranchAndBound
     /// then stops and keeps the incumbent rather than throwing).
     /// </summary>
     public static MipSolution Solve(IntegerModel model, long[] incumbentValues, int maxNodes, CancellationToken cancellationToken,
-        int pivotLimit = SimplexSolver.DefaultPivotLimit)
+        int pivotLimit = SimplexSolver.DefaultPivotLimit) =>
+        Solve(model, incumbentValues, maxNodes, cancellationToken, (lower, upper) => SimplexSolver.Solve(model, lower, upper, pivotLimit));
+
+    /// <summary>
+    /// As <see cref="Solve(IntegerModel, long[], int, CancellationToken, int)"/>, with the LP relaxation of each node
+    /// (given its lower and upper bounds) solved by <paramref name="solveLp"/>; a test seam for LP outcomes the
+    /// simplex does not produce on demand.
+    /// </summary>
+    internal static MipSolution Solve(IntegerModel model, long[] incumbentValues, int maxNodes, CancellationToken cancellationToken,
+        Func<double[], double[], LpResult> solveLp)
     {
         var variables = model.Variables;
         var n = variables.Count;
@@ -50,7 +59,7 @@ internal static class BranchAndBound
             nodes++;
 
             var (lower, upper) = stack.Pop();
-            var lp = SimplexSolver.Solve(model, lower, upper, pivotLimit);
+            var lp = solveLp(lower, upper);
             if (lp.Status == LpStatus.Failed)
                 return new MipSolution(bestValues, bestObjective, false);
             if (lp.Status == LpStatus.Infeasible)
