@@ -83,4 +83,12 @@ public class BranchAndBoundTests
 
     [Test] public void Wrong_Length_Incumbent_Throws() =>
         Assert.Throws<ArgumentException>(() => BranchAndBound.Solve(Knapsack(), [0, 0], 1000, CancellationToken.None));
+
+    [Test] public void Failed_Lp_Returns_Incumbent_Not_Optimal()
+    {
+        // A pivot limit of zero makes the root LP fail: the search must stop with the incumbent instead of throwing.
+        var s = BranchAndBound.Solve(Knapsack(), [0, 0, 1], 1000, CancellationToken.None, pivotLimit: 0);
+        Assert.That(s.Values, Is.EqualTo(new long[] { 0, 0, 1 }));
+        Assert.That(s.IsOptimal, Is.False);
+    }
 }

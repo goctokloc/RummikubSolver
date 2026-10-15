@@ -198,4 +198,11 @@ public class SimplexSolverTests
         Recurse(0, 0);
         return best;
     }
+
+    [Test] public void Pivot_Limit_Reports_Failed_Instead_Of_Throwing()
+    {
+        var r = SimplexSolver.Solve(Wyndor(), pivotLimit: 1);
+        Assert.That(r.Status, Is.EqualTo(LpStatus.Failed));
+        Assert.That(r.Values, Is.Empty);
+    }
 }

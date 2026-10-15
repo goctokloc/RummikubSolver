@@ -6,11 +6,14 @@ namespace Rummikub.Solver.Mip;
 /// <summary>
 /// Two-phase, bounded-variable primal simplex on a dense tableau. Solves the LP relaxation of an
 /// <see cref="IntegerModel"/> (integrality is ignored). Pricing is Dantzig, falling back to Bland's rule
-/// after a run of degenerate pivots so that degenerate models cannot cycle.
+/// after a run of degenerate pivots and keeping it for the rest of that phase, so that degenerate models cannot
+/// cycle. A solve that still exceeds the pivot limit reports <see cref="LpStatus.Failed"/> instead of throwing.
 /// </summary>
 internal static class SimplexSolver
 {
-    public static LpResult Solve(IntegerModel model, double[]? lower = null, double[]? upper = null)
+    public const int DefaultPivotLimit = 50_000;
+
+    public static LpResult Solve(IntegerModel model, double[]? lower = null, double[]? upper = null, int pivotLimit = DefaultPivotLimit)
     {
         var n = model.Variables.Count;
         if (lower is not null && lower.Length != n)
@@ -31,7 +34,7 @@ internal static class SimplexSolver
                 return new LpResult(LpStatus.Infeasible, double.NegativeInfinity, []);
         }
 
-        return new Tableau(model, lo, up).Run();
+        return new Tableau(model, lo, up, pivotLimit).Run();
     }
 
     /// <summary>
@@ -44,11 +47,10 @@ internal static class SimplexSolver
     sealed class Tableau
     {
         const double CostTolerance = 1e-9;
-        const double PivotTolerance = 1e-9;
+        const double PivotTolerance = 1e-7; // pivoting on smaller entries let degenerate LPs blow up numerically
         const double FeasibilityTolerance = 1e-9;
         const double StepTolerance = 1e-12;
         const int DegenerateRunBeforeBland = 50;
-        const int PivotLimit = 50_000;
 
         readonly int _n;
         readonly int _m;
@@ -62,10 +64,12 @@ internal static class SimplexSolver
         readonly int[] _basis;
         readonly bool[] _isBasic;
         readonly int[] _nonzero;
+        readonly int _pivotLimit;
         int _pivots;
 
-        public Tableau(IntegerModel model, double[] structuralLower, double[] structuralUpper)
+        public Tableau(IntegerModel model, double[] structuralLower, double[] structuralUpper, int pivotLimit)
         {
+            _pivotLimit = pivotLimit;
             _n = model.Variables.Count;
             _m = model.Constraints.Count;
             _width = _n + _m;
@@ -129,6 +133,18 @@ internal static class SimplexSolver
 
         public LpResult Run()
         {
+            try
+            {
+                return RunPhases();
+            }
+            catch (SimplexFailedException)
+            {
+                return new LpResult(LpStatus.Failed, double.NaN, []);
+            }
+        }
+
+        LpResult RunPhases()
+        {
             // Phase 1: maximise -Σ artificials using the phase-1 costs; keep the model costs aside.
             var objective = _c[.._n];
             Array.Clear(_c);
@@ -136,7 +152,7 @@ internal static class SimplexSolver
                 _c[_n + _m + i] = -1;
             ComputeReducedCosts();
             if (!Iterate(phaseOne: true))
-                throw new InvalidOperationException("Phase 1 of the simplex reported an unbounded objective.");
+                throw new SimplexFailedException(); // phase 1 is bounded by construction: only numerical trouble gets here
 
             double infeasibility = 0;
             for (var i = 0; i < _m; i++)
@@ -193,8 +209,8 @@ internal static class SimplexSolver
                 }
 
                 reducedCostsFresh = false;
-                if (++_pivots > PivotLimit)
-                    throw new InvalidOperationException("simplex pivot limit exceeded");
+                if (++_pivots > _pivotLimit)
+                    throw new SimplexFailedException();
 
                 var step = RatioTest(entering, direction, bland, out var leavingRow, out var leavingToUpper);
                 if (double.IsPositiveInfinity(step))
@@ -232,8 +248,8 @@ internal static class SimplexSolver
                 }
                 else
                 {
+                    // Bland stays on once triggered: switching back to Dantzig on tolerance-sized steps can cycle.
                     degenerateRun = 0;
-                    bland = false;
                 }
             }
         }
@@ -448,8 +464,8 @@ internal static class SimplexSolver
                 if (best < 0)
                     continue;
 
-                if (++_pivots > PivotLimit)
-                    throw new InvalidOperationException("simplex pivot limit exceeded");
+                if (++_pivots > _pivotLimit)
+                    throw new SimplexFailedException();
 
                 // Degenerate pivot: the artificial is (numerically) zero, so the entering column keeps its value.
                 _x[artificial] = 0;
@@ -457,4 +473,9 @@ internal static class SimplexSolver
             }
         }
     }
+}
+
+/// <summary>Internal signal that a simplex solve gave up; surfaced to callers as <see cref="LpStatus.Failed"/>.</summary>
+sealed class SimplexFailedException : Exception
+{
 }

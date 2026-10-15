@@ -17,4 +17,17 @@ public class SolverPerformanceTests
         Assert.That(r.IsOptimal, Is.True);
         Assert.That(sw.ElapsedMilliseconds, Is.LessThan(1000));
     }
+
+    [Test] public void Pivot_Limit_Position_Solves_Under_A_Second([Values] bool keepJokers)
+    {
+        var (hand, board) = SolverRegressionTests.PivotLimitPosition;
+        var options = new SolverOptions { InitialMeldDone = false, Objective = SolverObjective.Points, KeepJokers = keepJokers };
+        new RummikubSolver().Solve(hand, BoardState.Empty); // warm-up (JIT, catalogue)
+        var sw = Stopwatch.StartNew();
+        var r = new RummikubSolver().Solve(hand, board, options);
+        sw.Stop();
+        TestContext.Progress.WriteLine($"perf F1 repro (keepJokers {keepJokers}): {sw.ElapsedMilliseconds} ms, optimal {r.IsOptimal}");
+        Assert.That(r.IsOptimal, Is.True);
+        Assert.That(sw.ElapsedMilliseconds, Is.LessThan(1000));
+    }
 }

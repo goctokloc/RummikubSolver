@@ -24,10 +24,14 @@ internal static class RummikubModelBuilder
         var model = new IntegerModel();
         var balance = Enumerable.Range(0, TileCounts.Kinds).Select(_ => new List<(int Var, long Coef)>()).ToArray();
 
+        // During the initial meld the board is fixed, so new groups can only be built from hand tiles.
+        var available = options.InitialMeldDone
+            ? Tile.AllKinds.Select(t => handCounts[t.Id] + boardCounts[t.Id]).ToArray()
+            : Tile.AllKinds.Select(t => handCounts[t.Id]).ToArray();
         var groupVars = new List<(int Var, Group Group)>();
         foreach (var (group, usage) in _catalog.Value)
         {
-            var upper = Math.Min(MaxCopies, usage.Min(u => (handCounts[u.Id] + boardCounts[u.Id]) / u.Count));
+            var upper = Math.Min(MaxCopies, usage.Min(u => available[u.Id] / u.Count));
             if (upper == 0)
                 continue;
             var index = model.AddVariable(0, upper, true, $"x:{group}");

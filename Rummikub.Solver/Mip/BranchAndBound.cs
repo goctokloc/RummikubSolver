@@ -8,9 +8,11 @@ internal static class BranchAndBound
     /// <summary>
     /// Maximises <paramref name="model"/> starting from the feasible <paramref name="incumbentValues"/>.
     /// Returns the best solution found; <see cref="MipSolution.IsOptimal"/> is false when the node limit is hit
-    /// or the token is cancelled before the search tree is exhausted.
+    /// or the token is cancelled before the search tree is exhausted, or when an LP relaxation fails (the search
+    /// then stops and keeps the incumbent rather than throwing).
     /// </summary>
-    public static MipSolution Solve(IntegerModel model, long[] incumbentValues, int maxNodes, CancellationToken cancellationToken)
+    public static MipSolution Solve(IntegerModel model, long[] incumbentValues, int maxNodes, CancellationToken cancellationToken,
+        int pivotLimit = SimplexSolver.DefaultPivotLimit)
     {
         var variables = model.Variables;
         var n = variables.Count;
@@ -47,7 +49,9 @@ internal static class BranchAndBound
             nodes++;
 
             var (lower, upper) = stack.Pop();
-            var lp = SimplexSolver.Solve(model, lower, upper);
+            var lp = SimplexSolver.Solve(model, lower, upper, pivotLimit);
+            if (lp.Status == LpStatus.Failed)
+                return new MipSolution(bestValues, bestObjective, false);
             if (lp.Status == LpStatus.Infeasible)
                 continue;
             if (lp.Status == LpStatus.Unbounded)
