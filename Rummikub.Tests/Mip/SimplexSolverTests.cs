@@ -205,4 +205,19 @@ public class SimplexSolverTests
         Assert.That(r.Status, Is.EqualTo(LpStatus.Failed));
         Assert.That(r.Values, Is.Empty);
     }
+
+    [Test] public void Small_But_Genuine_Tableau_Entries_Still_Block()
+    {
+        // max 1000y; 10^7 x >= y; x in [0, 0], y in [0, 1]. x's row has the entry 1e-7 for y: ignoring it in the ratio
+        // test would let y reach 1 with x = 1e-7 above its bound. The LP optimum is 0.
+        var m = new IntegerModel();
+        var x = m.AddVariable(0, 10, false, "x");
+        var y = m.AddVariable(0, 1, false, "y");
+        m.AddConstraint([(x, 10_000_000), (y, -1)], Sense.GreaterOrEqual, 0);
+        m.SetObjective([(y, 1000)]);
+        var r = SimplexSolver.Solve(m, upper: [0, 1]);
+        Assert.That(r.Status, Is.EqualTo(LpStatus.Optimal));
+        Assert.That(r.Objective, Is.EqualTo(0).Within(1e-6));
+        Assert.That(r.Values[0], Is.LessThanOrEqualTo(1e-9));
+    }
 }

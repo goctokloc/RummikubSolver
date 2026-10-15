@@ -41,6 +41,7 @@ internal static class BranchAndBound
         var stack = new Stack<(double[] Lower, double[] Upper)>();
         stack.Push((rootLower, rootUpper));
         var nodes = 0;
+        var exhaustive = true;
 
         while (stack.Count > 0)
         {
@@ -63,20 +64,15 @@ internal static class BranchAndBound
             if (cannotImprove)
                 continue;
 
-            var branchVar = MostFractional(variables, lp.Values);
+            var branchVar = ChooseBranch(model, lp.Values, lower, upper, out var integral);
             if (branchVar < 0)
             {
-                var candidate = new long[n];
-                for (var j = 0; j < n; j++)
-                    candidate[j] = (long)Math.Round(lp.Values[j]);
-                if (model.IsFeasible(candidate))
+                if (integral is null)
+                    exhaustive = false; // the node could not be split, so it was not fully explored
+                else if (model.Evaluate(integral) > bestObjective)
                 {
-                    var objective = model.Evaluate(candidate);
-                    if (objective > bestObjective)
-                    {
-                        bestValues = candidate;
-                        bestObjective = objective;
-                    }
+                    bestValues = integral;
+                    bestObjective = model.Evaluate(integral);
                 }
 
                 continue;
@@ -93,20 +89,48 @@ internal static class BranchAndBound
             stack.Push((upLower, upper));
         }
 
-        return new MipSolution(bestValues, bestObjective, true);
+        return new MipSolution(bestValues, bestObjective, exhaustive);
     }
 
-    /// <summary>Index of the integer variable furthest from an integer (ties: lowest index), or -1 if none is fractional.</summary>
-    static int MostFractional(IReadOnlyList<Variable> variables, double[] values)
+    /// <summary>
+    /// Decides what to do with an LP point. Returns the variable to branch on, or -1 with
+    /// <paramref name="integral"/> set when the rounded point is feasible. An integral-looking point that rounds
+    /// infeasibly is branched on the variable furthest from an integer, however close; when no variable can split
+    /// the node (every value exactly integral, or drifted outside its bounds), returns -1 with
+    /// <paramref name="integral"/> null and the node must be dropped without claiming optimality.
+    /// </summary>
+    internal static int ChooseBranch(IntegerModel model, double[] values, double[] lower, double[] upper, out long[]? integral)
+    {
+        integral = null;
+        var branchVar = MostFractional(model.Variables, values, lower, upper, Tolerance);
+        if (branchVar >= 0)
+            return branchVar;
+
+        var candidate = new long[values.Length];
+        for (var j = 0; j < values.Length; j++)
+            candidate[j] = (long)Math.Round(values[j]);
+        if (model.IsFeasible(candidate))
+        {
+            integral = candidate;
+            return -1;
+        }
+
+        return MostFractional(model.Variables, values, lower, upper, 0);
+    }
+
+    /// <summary>Index of the integer variable furthest from an integer (ties: lowest index), or -1 if none is further than
+    /// <paramref name="threshold"/>. Only variables whose branches both shrink the node are considered: a value that
+    /// drifted outside its bounds (by the LP tolerance) cannot be split on.</summary>
+    static int MostFractional(IReadOnlyList<Variable> variables, double[] values, double[] lower, double[] upper, double threshold)
     {
         var best = -1;
-        var bestDistance = Tolerance;
+        var bestDistance = threshold;
         for (var j = 0; j < variables.Count; j++)
         {
             if (!variables[j].IsInteger)
                 continue;
             var distance = Math.Abs(values[j] - Math.Round(values[j]));
-            if (distance > bestDistance)
+            if (distance > bestDistance && Math.Floor(values[j]) >= lower[j] && Math.Ceiling(values[j]) <= upper[j])
             {
                 best = j;
                 bestDistance = distance;

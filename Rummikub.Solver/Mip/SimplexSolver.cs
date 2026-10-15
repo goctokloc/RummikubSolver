@@ -50,6 +50,7 @@ internal static class SimplexSolver
         const double PivotTolerance = 1e-7; // pivoting on smaller entries let degenerate LPs blow up numerically
         const double FeasibilityTolerance = 1e-9;
         const double StepTolerance = 1e-12;
+        const double ZeroTolerance = 1e-9; // tableau entries this small are treated as zero
         const int DegenerateRunBeforeBland = 50;
 
         readonly int _n;
@@ -292,62 +293,74 @@ internal static class SimplexSolver
         }
 
         /// <summary>
-        /// Bounded ratio test. Returns the step length (positive infinity if unlimited) and the blocking row,
-        /// or -1 when the entering variable's own bound blocks first (a bound flip).
+        /// Bounded Harris ratio test. Returns the step length (positive infinity if unlimited) and the blocking row,
+        /// or -1 when the entering variable's own bound blocks first (a bound flip). Pass 1 finds the longest step
+        /// that keeps every basic variable within its bounds relaxed by <see cref="FeasibilityTolerance"/>; pass 2
+        /// picks, among the rows blocking within that step, the largest pivot element, so tiny (noise-sized)
+        /// entries are pivoted on only when nothing else blocks. Under Bland's rule the lowest basic index wins
+        /// among pivots of at least <see cref="PivotTolerance"/>.
         /// </summary>
         double RatioTest(int entering, int direction, bool bland, out int leavingRow, out bool leavingToUpper)
         {
-            var best = direction > 0 ? _up[entering] - _x[entering] : _x[entering] - _lo[entering];
-            var bestPivot = 0.0;
             leavingRow = -1;
             leavingToUpper = false;
+            var flip = direction > 0 ? _up[entering] - _x[entering] : _x[entering] - _lo[entering];
 
+            var relaxed = double.PositiveInfinity;
             for (var i = 0; i < _m; i++)
             {
                 var a = _t[i * _width + entering];
-                if (Math.Abs(a) <= PivotTolerance)
+                if (Math.Abs(a) > ZeroTolerance)
+                    relaxed = Math.Min(relaxed, Limit(i, -direction * a, FeasibilityTolerance, out _));
+            }
+
+            if (flip <= relaxed)
+                return flip;
+
+            var bestPivot = 0.0;
+            var bestLimit = 0.0;
+            for (var i = 0; i < _m; i++)
+            {
+                var a = _t[i * _width + entering];
+                var pivot = Math.Abs(a);
+                if (pivot <= ZeroTolerance)
                     continue;
 
-                var basic = _basis[i];
-                var rate = -direction * a; // change of the basic variable per unit step
-                double limit;
-                bool toUpper;
-                if (rate < 0)
-                {
-                    if (double.IsNegativeInfinity(_lo[basic]))
-                        continue;
-                    limit = (_x[basic] - _lo[basic]) / -rate;
-                    toUpper = false;
-                }
-                else
-                {
-                    if (double.IsPositiveInfinity(_up[basic]))
-                        continue;
-                    limit = (_up[basic] - _x[basic]) / rate;
-                    toUpper = true;
-                }
-
-                if (limit < 0)
-                    limit = 0;
+                var limit = Limit(i, -direction * a, 0, out var toUpper);
+                if (limit > relaxed)
+                    continue;
 
                 bool take;
-                if (limit < best - StepTolerance)
+                if (leavingRow < 0)
                     take = true;
-                else if (leavingRow >= 0 && limit <= best + StepTolerance)
-                    take = bland ? basic < _basis[leavingRow] : Math.Abs(a) > bestPivot;
+                else if (bland && pivot >= PivotTolerance)
+                    take = bestPivot < PivotTolerance || _basis[i] < _basis[leavingRow];
                 else
-                    take = false;
+                    take = (!bland || bestPivot < PivotTolerance) && pivot > bestPivot;
 
                 if (take)
                 {
-                    best = Math.Min(best, limit);
-                    bestPivot = Math.Abs(a);
+                    bestPivot = pivot;
+                    bestLimit = limit;
                     leavingRow = i;
                     leavingToUpper = toUpper;
                 }
             }
 
-            return best;
+            return Math.Max(bestLimit, 0);
+        }
+
+        /// <summary>
+        /// Step at which row <paramref name="row"/>'s basic variable, changing by <paramref name="rate"/> per unit,
+        /// reaches its bound relaxed by <paramref name="slack"/>; positive infinity when that bound is infinite.
+        /// </summary>
+        double Limit(int row, double rate, double slack, out bool toUpper)
+        {
+            var basic = _basis[row];
+            toUpper = rate > 0;
+            return toUpper
+                ? double.IsPositiveInfinity(_up[basic]) ? double.PositiveInfinity : (_up[basic] - _x[basic] + slack) / rate
+                : double.IsNegativeInfinity(_lo[basic]) ? double.PositiveInfinity : (_x[basic] - _lo[basic] + slack) / -rate;
         }
 
         void Pivot(int row, int column)
