@@ -42,6 +42,20 @@ public class RummikubModelBuilderTests
         Assert.That(RummikubModelBuilder.Build(Hand.Of([R(1), R(2), R(3)]), BoardState.Empty, Default)
             .GroupVars.Select(v => v.Group), Is.EquivalentTo(new Group[] { Run.Create(Color.Red, 1, 3, 0) }));
 
+    [Test] public void Meld_Mode_Columns_Use_Hand_Tiles_Only()
+    {
+        // R1 R2 in hand, R3 on the board. After the meld, R1-R2-R3 can be built by reusing the board's R3; during
+        // the initial meld the board is fixed, so a group that needs a board tile must not be a column.
+        var hand = Hand.Of([R(1), R(2)]);
+        var board = BoardState.Of([Run.Create(Color.Red, 3, 3, 0)]);
+        var needsBoardTile = Run.Create(Color.Red, 1, 3, 0);
+        var meld = RummikubModelBuilder.Build(hand, board, Default with { InitialMeldDone = false });
+        var after = RummikubModelBuilder.Build(hand, board, Default);
+        Assert.That(after.GroupVars.Select(v => v.Group), Does.Contain(needsBoardTile));
+        Assert.That(meld.GroupVars.Select(v => v.Group), Does.Not.Contain(needsBoardTile));
+        Assert.That(meld.GroupVars, Is.Empty); // two hand tiles cannot form any group on their own
+    }
+
     [Test] public void Level_Order_Depends_On_KeepJokers()
     {
         var plain = RummikubModelBuilder.Build(Hand.Of([R(1)]), BoardState.Empty, Default);
