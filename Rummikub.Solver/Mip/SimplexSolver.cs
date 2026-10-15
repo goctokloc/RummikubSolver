@@ -6,8 +6,8 @@ namespace Rummikub.Solver.Mip;
 /// <summary>
 /// Two-phase, bounded-variable primal simplex on a dense tableau. Solves the LP relaxation of an
 /// <see cref="IntegerModel"/> (integrality is ignored). Pricing is Dantzig, falling back to Bland's rule
-/// after a run of degenerate pivots and keeping it for the rest of that phase, so that degenerate models cannot
-/// cycle. A solve that still exceeds the pivot limit reports <see cref="LpStatus.Failed"/> instead of throwing.
+/// after a run of degenerate pivots and keeping it for the rest of the solve (phase 2 included), so that degenerate
+/// models cannot cycle. A solve that still exceeds the pivot limit reports <see cref="LpStatus.Failed"/> instead of throwing.
 /// </summary>
 internal static class SimplexSolver
 {
@@ -67,6 +67,7 @@ internal static class SimplexSolver
         readonly int[] _nonzero;
         readonly int _pivotLimit;
         int _pivots;
+        bool _bland; // once Bland's rule is triggered it stays on for the rest of the solve, phase 2 included
 
         public Tableau(IntegerModel model, double[] structuralLower, double[] structuralUpper, int pivotLimit)
         {
@@ -192,12 +193,11 @@ internal static class SimplexSolver
         bool Iterate(bool phaseOne)
         {
             var degenerateRun = 0;
-            var bland = false;
             var reducedCostsFresh = true;
 
             while (true)
             {
-                var entering = ChooseEntering(bland, out var direction);
+                var entering = ChooseEntering(_bland, out var direction);
                 if (entering < 0)
                 {
                     if (reducedCostsFresh)
@@ -213,7 +213,7 @@ internal static class SimplexSolver
                 if (++_pivots > _pivotLimit)
                     throw new SimplexFailedException();
 
-                var step = RatioTest(entering, direction, bland, out var leavingRow, out var leavingToUpper);
+                var step = RatioTest(entering, direction, _bland, out var leavingRow, out var leavingToUpper);
                 if (double.IsPositiveInfinity(step))
                     return false;
 
@@ -245,7 +245,7 @@ internal static class SimplexSolver
                 if (step <= StepTolerance)
                 {
                     if (++degenerateRun >= DegenerateRunBeforeBland)
-                        bland = true;
+                        _bland = true;
                 }
                 else
                 {
