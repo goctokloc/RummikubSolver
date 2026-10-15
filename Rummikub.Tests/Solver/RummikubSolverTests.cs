@@ -17,7 +17,7 @@ public class RummikubSolverTests
         Hand hand = Hand.Of([]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
 
         Assert.That(result, Is.EqualTo(SolverResult.Empty));
     }
@@ -33,7 +33,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
@@ -53,7 +53,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
@@ -76,7 +76,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(6));
@@ -99,7 +99,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(6));
@@ -119,7 +119,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
@@ -140,7 +140,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
@@ -158,7 +158,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
 
         Assert.That(result.PlayedTiles, Has.Count.EqualTo(0));
     }
@@ -174,7 +174,7 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
 
         Assert.That(result.PlayedTiles, Has.Count.EqualTo(4));
     }
@@ -189,8 +189,8 @@ public class RummikubSolverTests
         ]);
         BoardState board = BoardState.Empty;
 
-        var first = _solver.SolveMaxTiles(hand, board);
-        var second = _solver.SolveMaxTiles(hand, board);
+        var first = _solver.Solve(hand, board);
+        var second = _solver.Solve(hand, board);
 
         Assert.That(first, Is.EqualTo(second));
     }
@@ -206,7 +206,7 @@ public class RummikubSolverTests
             Tile.Of(Color.Red, 5)
         ]);
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(1));
@@ -226,7 +226,7 @@ public class RummikubSolverTests
             Tile.Of(Color.Red, 4)
         ]);
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         Assert.Multiple(() =>
         {
             Assert.That(result.PlayedTiles, Has.Count.EqualTo(2));
@@ -238,7 +238,7 @@ public class RummikubSolverTests
     public void Solver_Does_Not_Throw_With_Three_Jokers_In_Pool()
     {
         var hand = Hand.Of([Tile.Joker, Tile.Joker, Tile.Joker, Tile.Of(Color.Red, 5)]);
-        var result = _solver.SolveMaxTiles(hand, BoardState.Empty);
+        var result = _solver.Solve(hand, BoardState.Empty);
         Assert.That(result.PlayedTiles, Has.Count.EqualTo(3));
     }
 }

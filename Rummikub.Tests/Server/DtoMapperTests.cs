@@ -105,7 +105,7 @@ public class DtoMapperTests
     [Test]
     public void Response_Slots_Carry_Joker_Meaning()
     {
-        var result = SolverResult.Create(BoardState.Of([Run.Create(Color.Red, 3, 3, 0b010)]), [Tile.Joker]);
+        var result = SolverResult.Create(BoardState.Of([Run.Create(Color.Red, 3, 3, 0b010)]), [Tile.Joker], isOptimal: true);
         var dto = DtoMapper.ToResponse(result);
         Assert.That(dto.TilesPlayed, Is.EqualTo(1));
         Assert.That(dto.PlayedTiles[0].Joker, Is.True);

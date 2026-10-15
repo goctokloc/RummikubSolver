@@ -15,7 +15,7 @@ var board = BoardState.Of([
 
 var solver = new RummikubSolver();
 
-var result = solver.SolveMaxTiles(hand, board);
+var result = solver.Solve(hand, board);
 
 Console.WriteLine("================= Rummikub Solver ================");
 Console.WriteLine($"Tiles played: {result.PlayedTiles.Count}");

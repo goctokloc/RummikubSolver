@@ -21,7 +21,7 @@ public class SolverController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var result = _solver.SolveMaxTiles(hand, board);
+        var result = _solver.Solve(hand, board);
         return Ok(DtoMapper.ToResponse(result));
     }
 }
