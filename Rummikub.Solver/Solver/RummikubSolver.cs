@@ -10,6 +10,10 @@ public sealed class RummikubSolver
         CancellationToken cancellationToken = default)
     {
         options ??= new SolverOptions();
+        if (options.MaxNodes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), options.MaxNodes, "MaxNodes must be positive.");
+        if (options.InitialMeldPoints < 0)
+            throw new ArgumentOutOfRangeException(nameof(options), options.InitialMeldPoints, "InitialMeldPoints must not be negative.");
         var model = RummikubModelBuilder.Build(hand, board, options);
         model.PackObjective();
         var solution = BranchAndBound.Solve(model.Model, model.KeepEverything(), options.MaxNodes, cancellationToken);

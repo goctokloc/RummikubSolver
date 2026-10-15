@@ -86,4 +86,19 @@ public class SolverOptionsBehaviourTests
         Assert.That(r.Board, Is.EqualTo(board));
         Assert.That(r.IsOptimal, Is.False);
     }
+
+    [Test] public void Rejects_Non_Positive_MaxNodes([Values(0, -1)] int maxNodes) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _solver.Solve(Hand.Empty, BoardState.Empty, new SolverOptions { MaxNodes = maxNodes }));
+
+    [Test] public void Rejects_Negative_InitialMeldPoints() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _solver.Solve(Hand.Empty, BoardState.Empty, new SolverOptions { InitialMeldPoints = -1 }));
+
+    [Test] public void Accepts_Boundary_Options()
+    {
+        var r = _solver.Solve(Hand.Of([R(1), R(2), R(3)]), BoardState.Empty,
+            new SolverOptions { MaxNodes = 1, InitialMeldPoints = 0, InitialMeldDone = false });
+        Assert.That(r.PlayedTiles.Count, Is.EqualTo(0).Or.EqualTo(3));
+    }
 }
