@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <!-- Runs the solver in the browser: `dotnet publish -c Release` emits wwwroot/_framework for the client to load. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
+  </PropertyGroup>
+
+  <!-- The DTOs and their mapping are shared with the HTTP server so both front ends accept the same JSON. -->
+  <ItemGroup>
+    <Compile Include="..\Rummikub.Server\Models\RummikubDtos.cs" Link="Shared\RummikubDtos.cs" />
+    <Compile Include="..\Rummikub.Server\Mapping\DtoMapper.cs" Link="Shared\DtoMapper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rummikub.Core\Rummikub.Core.csproj" />
+    <ProjectReference Include="..\Rummikub.Solver\Rummikub.Solver.csproj" />
+  </ItemGroup>
+
+</Project>

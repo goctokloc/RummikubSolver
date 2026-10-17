@@ -59,20 +59,60 @@ export const toInputGroups = (board: GroupDto[]): GroupInputDto[] =>
     tiles: g.slots.map(s => (s.joker ? JOKER : { color: s.color, value: s.value })),
   }));
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5155';
-
 export type SolveOutcome = { ok: true; result: SolveResponse } | { ok: false; errors: string[] };
 
-export async function solve(request: SolveRequest): Promise<SolveOutcome> {
+/** When set, solves go to the Rummikub.Server HTTP API; otherwise the solver runs in the browser as WebAssembly. */
+const API_URL: string | undefined = import.meta.env.VITE_API_URL;
+
+export const solve = (request: SolveRequest) => (API_URL ? solveOverHttp(API_URL, request) : solveInBrowser(request));
+
+type WorkerReply = { id: number; responseJson?: string; error?: string; runtimeMissing?: boolean };
+
+let worker: Worker | undefined;
+let nextId = 0;
+const pending = new Map<number, (reply: WorkerReply) => void>();
+
+function getWorker() {
+  if (!worker) {
+    worker = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e: MessageEvent<WorkerReply>) => {
+      pending.get(e.data.id)?.(e.data);
+      pending.delete(e.data.id);
+    };
+  }
+  return worker;
+}
+
+/** Starts downloading the .NET runtime before the first solve needs it. */
+export const warmUpSolver = () => {
+  if (!API_URL) getWorker();
+};
+
+async function solveInBrowser(request: SolveRequest): Promise<SolveOutcome> {
+  const id = nextId++;
+  const reply = await new Promise<WorkerReply>(resolve => {
+    pending.set(id, resolve);
+    getWorker().postMessage({ id, requestJson: JSON.stringify(request) });
+  });
+  if (reply.responseJson === undefined) {
+    const hint = reply.runtimeMissing && import.meta.env.DEV ? ' Run `npm run build:wasm` first.' : '';
+    return { ok: false, errors: [`${reply.error}${hint}`] };
+  }
+  const body: SolveResponse | { errors: Record<string, string> } = JSON.parse(reply.responseJson);
+  if ('errors' in body) return { ok: false, errors: Object.entries(body.errors).map(([k, v]) => `${k}: ${v}`) };
+  return { ok: true, result: body };
+}
+
+async function solveOverHttp(apiUrl: string, request: SolveRequest): Promise<SolveOutcome> {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/api/solver/solve`, {
+    response = await fetch(`${apiUrl}/api/solver/solve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
   } catch {
-    return { ok: false, errors: [`Can't reach the solver at ${API_URL}. Check that the server is running.`] };
+    return { ok: false, errors: [`Can't reach the solver at ${apiUrl}. Check that the server is running.`] };
   }
   if (response.status === 400) {
     const problem: { errors?: Record<string, string[]> } = await response.json();

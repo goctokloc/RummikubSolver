@@ -5,7 +5,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages serves the site from /<repo>/; the deploy workflow sets BASE_PATH.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), tailwindcss()],
+  // The solver worker dynamically imports the .NET runtime, which needs an ES module worker.
+  worker: { format: 'es' },
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
