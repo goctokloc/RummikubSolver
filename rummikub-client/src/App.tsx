@@ -1,295 +1,410 @@
-import { useState } from 'react';
-import { Play, Plus, RefreshCw, Layers } from 'lucide-react';
-import './index.css';
+import { useMemo, useState } from 'react';
+import { Check, LoaderCircle, X } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { RemovableTile, TileFace } from '@/components/rummikub-tile';
+import { TilePicker } from '@/components/tile-picker';
+import {
+  type GroupInputDto,
+  type GroupType,
+  type Objective,
+  type SolveResponse,
+  type TileDto,
+  countTiles,
+  markPlayedSlots,
+  solve,
+  subtractTiles,
+  toInputGroups,
+} from '@/lib/rummikub';
 
-type TileDto = { color?: string; value?: number; joker?: boolean };
-type GroupInputDto = { type: string; tiles: TileDto[] };
-type SolveOptions = { initialMeldDone: boolean; objective: 'TileCount' | 'Points'; keepJokers: boolean };
-type SolveRequest = { hand: TileDto[]; board: GroupInputDto[]; options: SolveOptions };
-type SlotDto = { color: string; value: number; joker: boolean };
-type GroupDto = { type: string; slots: SlotDto[] };
-type SolveResponse = { playedTiles: TileDto[]; board: GroupDto[]; tilesPlayed: number; optimal: boolean };
-type ValidationProblem = { errors?: Record<string, string[]> };
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5155';
-const COLOR_LETTER: Record<string, string> = { Red: 'R', Blue: 'B', Yellow: 'Y', Black: 'K' };
+type Target = 'rack' | 'group';
+type View = 'current' | 'solved';
 
 export default function App() {
   const [hand, setHand] = useState<TileDto[]>([]);
   const [board, setBoard] = useState<GroupInputDto[]>([]);
+  const [draft, setDraft] = useState<TileDto[]>([]);
+  const [draftType, setDraftType] = useState<GroupType>('Set');
+  const [target, setTarget] = useState<Target>('rack');
+
+  const [initialMeldDone, setInitialMeldDone] = useState(true);
+  const [objective, setObjective] = useState<Objective>('TileCount');
+  const [keepJokers, setKeepJokers] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [view, setView] = useState<View>('current');
 
-  const colors = ['Red', 'Blue', 'Black', 'Yellow'];
-  const values = Array.from({ length: 13 }, (_, i) => i + 1);
+  const used = useMemo(
+    () => countTiles([...hand, ...draft, ...board.flatMap(g => g.tiles)]),
+    [hand, draft, board],
+  );
+  const playedSlots = useMemo(
+    () => (result ? markPlayedSlots(result.board, result.playedTiles) : []),
+    [result],
+  );
 
-  const [tColor, setTColor] = useState('Red');
-  const [tValue, setTValue] = useState(1);
-  const [tIsJoker, setTIsJoker] = useState(false);
-
-  // Solver options
-  const [initialMeldDone, setInitialMeldDone] = useState(true);
-  const [objective, setObjective] = useState<SolveOptions['objective']>('TileCount');
-  const [keepJokers, setKeepJokers] = useState(false);
-
-  // Group Builder Form
-  const [gType, setGType] = useState('Set');
-  const [gTiles, setGTiles] = useState<TileDto[]>([]);
-
-  const builderTile = (): TileDto => (tIsJoker ? { joker: true } : { color: tColor, value: tValue });
-
-  const addTileToHand = () => {
-    setHand([...hand, builderTile()]);
-  };
-
-  const addTileToGroupBuilder = () => {
-    setGTiles([...gTiles, builderTile()]);
-  };
-
-  const commitGroupToBoard = () => {
-    if (gTiles.length === 0) return;
-    setBoard([...board, { type: gType, tiles: [...gTiles] }]);
-    setGTiles([]);
-  };
-
-  const removeHandTile = (idx: number) => {
-    setHand(hand.filter((_, i) => i !== idx));
-  };
-
-  const removeBoardGroup = (idx: number) => {
-    setBoard(board.filter((_, i) => i !== idx));
-  };
-
-  const solve = async () => {
-    setLoading(true);
+  // Any edit to the position makes an earlier answer stale.
+  const edit = (apply: () => void) => {
+    apply();
     setResult(null);
     setErrors([]);
-    try {
-      const payload: SolveRequest = { hand, board, options: { initialMeldDone, objective, keepJokers } };
-      const response = await fetch(`${API_URL}/api/solver/solve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (response.status === 400) {
-        const problem: ValidationProblem = await response.json();
-        setErrors(Object.entries(problem.errors ?? {}).map(([k, v]) => `${k}: ${v.join(', ')}`));
-      } else if (!response.ok) {
-        setErrors([`Server error (${response.status})`]);
-      } else {
-        setResult(await response.json());
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Failed to connect to Rummikub Solver API');
+    setView('current');
+  };
+
+  const pick = (tile: TileDto) =>
+    edit(() => (target === 'rack' ? setHand(h => [...h, tile]) : setDraft(d => [...d, tile])));
+
+  const commitDraft = () =>
+    edit(() => {
+      setBoard(b => [...b, { type: draftType, tiles: draft }]);
+      setDraft([]);
+    });
+
+  const runSolve = async () => {
+    setLoading(true);
+    setErrors([]);
+    const outcome = await solve({ hand, board, options: { initialMeldDone, objective, keepJokers } });
+    if (outcome.ok) {
+      setResult(outcome.result);
+      setView('solved');
+    } else {
+      setResult(null);
+      setErrors(outcome.errors);
     }
     setLoading(false);
   };
 
-  const renderTile = (t: TileDto, idx: number, removeFn?: (i: number) => void) => (
-    <div key={idx} className="tile-wrapper">
-      <div className={`tile ${t.joker ? 'joker' : t.color?.toLowerCase()}`}>
-        {t.joker ? '☻' : t.value}
-      </div>
-      {removeFn && (
-        <button onClick={() => removeFn(idx)} className="remove-btn">✕</button>
-      )}
-    </div>
-  );
-
-  const renderSlot = (s: SlotDto, idx: number) => (
-    <div key={idx} className="tile-wrapper">
-      <div className={`tile ${s.joker ? 'joker' : s.color.toLowerCase()}`}>
-        {s.joker ? (
-          <>
-            ☻<span className="joker-face">{`${COLOR_LETTER[s.color] ?? s.color[0]}${s.value}`}</span>
-          </>
-        ) : s.value}
-      </div>
-    </div>
-  );
+  const applyMove = () => {
+    if (!result) return;
+    const played = result.playedTiles;
+    edit(() => {
+      setBoard(toInputGroups(result.board));
+      setHand(h => subtractTiles(h, played));
+      if (played.length > 0) setInitialMeldDone(true);
+    });
+  };
 
   return (
-    <div className="app-container">
-      <header>
-        <h1>Rummikub AI Solver</h1>
-        <p className="subtitle">Extremely optimized Exact Cover native algorithms</p>
-      </header>
+    <TooltipProvider>
+      <div className="mx-auto max-w-[1180px] px-4 pt-10 pb-16 sm:px-8 lg:pt-16">
+        <header className="mb-10 max-w-[38rem]">
+          <h1 className="font-heading text-[2.5rem] leading-[1.1] font-medium tracking-[-0.015em] sm:text-5xl">
+            Rummikub solver
+          </h1>
+          <p className="mt-4 text-[1.0625rem] leading-relaxed text-muted-foreground">
+            Lay out the table and your rack, then find the move that gets the most tiles out of your hand,
+            rearranging the table where it helps.
+          </p>
+        </header>
 
-      <div className="workspace">
-        <div className="board-area">
-          {/* Hand Area */}
-          <div className="glass-panel hand-area">
-            <h3>Your Hand ({hand.length} tiles)</h3>
-            <div className="hand-tiles">
-              {hand.length === 0 ? <span style={{ color: '#64748b' }}>Hand is empty</span> : hand.map((t, i) => renderTile(t, i, removeHandTile))}
-            </div>
-          </div>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8">
+          <main className="flex min-w-0 flex-col gap-6">
+            <Tabs value={view} onValueChange={v => setView(v as View)} className="gap-0">
+              <Card className="gap-0 py-0 ring-border">
+                <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b py-4">
+                  <CardTitle className="font-heading text-xl">Table</CardTitle>
+                  <TabsList variant="line">
+                    <TabsTrigger value="current">Now</TabsTrigger>
+                    <TabsTrigger value="solved" disabled={!result}>
+                      After best move
+                    </TabsTrigger>
+                  </TabsList>
+                </CardHeader>
 
-          {/* Board Area */}
-          <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>Board configuration</h3>
-              <span className="badge">{board.length} Groups</span>
-            </div>
-            <div className="board-grid">
-              {board.length === 0 ? (
-                <span style={{ color: '#64748b' }}>Board is empty</span>
+                <TabsContent value="current" className="min-h-56 p-5 sm:p-6">
+                  {board.length === 0 ? (
+                    <EmptyNote>
+                      The table is empty. Build a group in the panel on the right, or leave it empty to find your
+                      opening meld.
+                    </EmptyNote>
+                  ) : (
+                    <div className="flex flex-wrap gap-x-6 gap-y-5">
+                      {board.map((g, i) => (
+                        <div key={i} className="group/row flex items-center gap-1">
+                          <GroupTiles tiles={g.tiles} />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label={`Remove group ${i + 1}`}
+                                className="ml-1 text-muted-foreground opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                                onClick={() => edit(() => setBoard(b => b.filter((_, j) => j !== i)))}
+                              >
+                                <X />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Remove group</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="solved" className="min-h-56 p-5 sm:p-6">
+                  {result && (
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="font-heading text-lg">
+                            {result.tilesPlayed === 0
+                              ? 'No tiles can be played this turn.'
+                              : `Play ${result.tilesPlayed} ${result.tilesPlayed === 1 ? 'tile' : 'tiles'} from your rack.`}
+                          </p>
+                          {result.optimal ? (
+                            <Badge variant="secondary">
+                              <Check /> Best possible
+                            </Badge>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline">Best found</Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-60">
+                                The search hit its limit before it could prove nothing better exists.
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        {result.tilesPlayed > 0 && (
+                          <Button variant="outline" onClick={applyMove}>
+                            Apply move
+                          </Button>
+                        )}
+                      </div>
+
+                      {result.board.length > 0 && (
+                        <div className="flex flex-wrap gap-x-6 gap-y-5">
+                          {result.board.map((g, i) => (
+                            <div key={i} className="flex gap-1">
+                              {g.slots.map((s, j) => (
+                                <TileFace
+                                  key={j}
+                                  tile={s.joker ? { joker: true } : s}
+                                  standsFor={s.joker ? s : undefined}
+                                  played={playedSlots[i][j]}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {result.tilesPlayed > 0 && (
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="size-1.5 rounded-full bg-clay" aria-hidden />
+                          Marked tiles come from your rack.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+              </Card>
+            </Tabs>
+
+            <section aria-labelledby="rack-heading" className="rounded-xl bg-rack p-5 sm:p-6">
+              <div className="mb-4 flex items-baseline justify-between gap-4">
+                <h2 id="rack-heading" className="font-heading text-xl font-medium">
+                  Your rack
+                  <span className="ml-2 font-sans text-sm font-normal text-muted-foreground tabular-nums">
+                    {hand.length} {hand.length === 1 ? 'tile' : 'tiles'}
+                  </span>
+                </h2>
+                {hand.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => edit(() => setHand([]))}>
+                    Clear rack
+                  </Button>
+                )}
+              </div>
+              {hand.length === 0 ? (
+                <EmptyNote>Pick tiles in the panel to add them to your rack.</EmptyNote>
               ) : (
-                board.map((g, i) => (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <div className="group-container">
-                      {g.tiles.map((t, idx) => renderTile(t, idx))}
-                    </div>
-                    <button onClick={() => removeBoardGroup(i)} className="remove-btn" style={{ opacity: 1 }}>✕</button>
-                  </div>
-                ))
+                <div className="flex flex-wrap gap-1.5">
+                  {hand.map((t, i) => (
+                    <RemovableTile key={i} tile={t} onRemove={() => edit(() => setHand(h => h.filter((_, j) => j !== i)))} />
+                  ))}
+                </div>
               )}
-            </div>
-          </div>
+            </section>
+          </main>
 
-          {/* Validation Errors */}
-          {errors.length > 0 && (
-            <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid #ef4444' }}>
-              <h3 style={{ color: '#ef4444', marginBottom: '0.5rem' }}>Could not solve</h3>
-              <ul>
-                {errors.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            </div>
-          )}
+          <aside className="lg:sticky lg:top-6">
+            <Card className="ring-border">
+              <CardHeader>
+                <CardTitle className="font-heading text-xl">Add tiles</CardTitle>
+                <CardDescription>Click a tile to add it. Each tile comes in two copies.</CardDescription>
+              </CardHeader>
 
-          {/* Result Area */}
-          {result && (
-            <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid #10b981' }}>
-              <h2 style={{ color: '#10b981', marginBottom: '1rem' }}>Solve Complete!</h2>
-              <p style={{ marginBottom: '1rem', color: '#94a3b8' }}>
-                Tiles played from hand: <strong style={{ color: 'white' }}>{result.tilesPlayed}</strong>
-              </p>
-              {!result.optimal && (
-                <p style={{ marginBottom: '1rem', color: '#f59e0b' }}>Not proven optimal</p>
-              )}
+              <CardContent className="flex flex-col gap-5">
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  spacing={0}
+                  value={target}
+                  onValueChange={v => v && setTarget(v as Target)}
+                  className="w-full"
+                  aria-label="Where picked tiles go"
+                >
+                  <ToggleGroupItem value="rack" className="flex-1">
+                    To my rack
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="group" className="flex-1">
+                    To a new group
+                  </ToggleGroupItem>
+                </ToggleGroup>
 
-              <h4 style={{ marginBottom: '0.5rem' }}>Optimized Board State</h4>
-              <div className="board-grid" style={{ minHeight: 'auto', padding: '1rem 0' }}>
-                {result.board.map((g, i) => (
-                  <div key={i} className="group-container">
-                    {g.slots.map((s, idx) => renderSlot(s, idx))}
-                    <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px', fontSize: '0.8rem', color: '#64748b' }}>
-                      {g.type}
+                <TilePicker used={used} onPick={pick} />
+
+                {target === 'group' && (
+                  <div className="flex flex-col gap-3 rounded-lg border border-dashed border-input p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <ToggleGroup
+                        type="single"
+                        variant="outline"
+                        size="sm"
+                        spacing={0}
+                        value={draftType}
+                        onValueChange={v => v && setDraftType(v as GroupType)}
+                        aria-label="Group type"
+                      >
+                        <ToggleGroupItem value="Set" className="px-3">Set</ToggleGroupItem>
+                        <ToggleGroupItem value="Run" className="px-3">Run</ToggleGroupItem>
+                      </ToggleGroup>
+                      <span className="text-xs text-muted-foreground">
+                        {draftType === 'Set' ? 'Same number, different colors' : 'Same color, consecutive numbers'}
+                      </span>
+                    </div>
+                    {draft.length === 0 ? (
+                      <p className="py-3 text-center text-sm text-muted-foreground">Pick tiles for this group.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {draft.map((t, i) => (
+                          <RemovableTile key={i} tile={t} onRemove={() => setDraft(d => d.filter((_, j) => j !== i))} />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button className="flex-1" variant="secondary" disabled={draft.length === 0} onClick={commitDraft}>
+                        Add group to table
+                      </Button>
+                      {draft.length > 0 && (
+                        <Button variant="ghost" onClick={() => setDraft([])}>
+                          Clear
+                        </Button>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                )}
 
-        {/* Builder Panel */}
-        <div className="glass-panel controls-panel">
-          <div className="controls-header">Tile Builder</div>
+                <Separator />
 
-          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={tIsJoker}
-              onChange={e => setTIsJoker(e.target.checked)}
-              id="joker-switch"
-            />
-            <label htmlFor="joker-switch" style={{ color: '#a855f7', fontWeight: 'bold' }}>Is Joker</label>
-          </div>
+                <div className="flex flex-col gap-4">
+                  <OptionRow
+                    id="initial-meld"
+                    label="Opening meld already made"
+                    hint="Turn off to require a first play of at least 30 points from your rack alone."
+                    checked={initialMeldDone}
+                    onChange={v => edit(() => setInitialMeldDone(v))}
+                  />
+                  <OptionRow
+                    id="keep-jokers"
+                    label="Hold on to jokers"
+                    hint="Keep jokers in your rack when playing them wouldn't score more."
+                    checked={keepJokers}
+                    onChange={v => edit(() => setKeepJokers(v))}
+                  />
+                  <div className="flex items-center justify-between gap-4">
+                    <Label id="objective-label" className="font-normal">Aim for</Label>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      spacing={0}
+                      value={objective}
+                      onValueChange={v => v && edit(() => setObjective(v as Objective))}
+                      aria-labelledby="objective-label"
+                    >
+                      <ToggleGroupItem value="TileCount" className="px-3">Most tiles</ToggleGroupItem>
+                      <ToggleGroupItem value="Points" className="px-3">Most points</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+              </CardContent>
 
-          {!tIsJoker && (
-            <>
-              <div className="form-group">
-                <label>Color</label>
-                <select value={tColor} onChange={e => setTColor(e.target.value)}>
-                  {colors.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Value</label>
-                <select value={tValue} onChange={e => setTValue(parseInt(e.target.value))}>
-                  {values.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="button-group" style={{ marginTop: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={addTileToHand}>
-              Hand <Plus size={18} />
-            </button>
-            <button className="btn btn-primary" style={{ background: '#475569' }} onClick={addTileToGroupBuilder}>
-              Group <Plus size={18} />
-            </button>
-          </div>
-
-          {/* Pending Group Builder */}
-          {gTiles.length > 0 && (
-            <div style={{ marginTop: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <label>Pending Group ({gType})</label>
-                <span style={{ cursor: 'pointer', color: '#ef4444' }} onClick={() => setGTiles([])}>Clear</span>
-              </div>
-              <select style={{ width: '100%', marginBottom: '1rem' }} value={gType} onChange={e => setGType(e.target.value)}>
-                <option value="Set">Set</option>
-                <option value="Run">Run</option>
-              </select>
-              <div className="hand-tiles" style={{ minHeight: 'auto', marginBottom: '1rem' }}>
-                {gTiles.map((t, i) => renderTile(t, i))}
-              </div>
-              <button className="btn btn-primary" style={{ width: '100%', background: '#6366f1' }} onClick={commitGroupToBoard}>
-                <Layers size={18} /> Add to Board
-              </button>
-            </div>
-          )}
-
-          <div className="controls-header" style={{ marginTop: '1.5rem' }}>Solver Options</div>
-
-          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={initialMeldDone}
-              onChange={e => setInitialMeldDone(e.target.checked)}
-              id="initial-meld"
-            />
-            <label htmlFor="initial-meld">Initial meld made</label>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="objective">Objective</label>
-            <select
-              id="objective"
-              value={objective}
-              onChange={e => setObjective(e.target.value as SolveOptions['objective'])}
-            >
-              <option value="TileCount">Tile count</option>
-              <option value="Points">Points</option>
-            </select>
-          </div>
-
-          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={keepJokers}
-              onChange={e => setKeepJokers(e.target.checked)}
-              id="keep-jokers"
-            />
-            <label htmlFor="keep-jokers">Keep jokers</label>
-          </div>
-
-          <button
-            className="btn btn-success"
-            onClick={solve}
-            disabled={loading}
-          >
-            {loading ? <RefreshCw className="spinner" size={20} /> : <Play size={20} />}
-            {loading ? 'Solving...' : 'Optimize Turn'}
-          </button>
+              <CardFooter className="flex-col items-stretch gap-3 bg-transparent">
+                <Button size="lg" className="h-11 text-[0.9375rem]" onClick={runSolve} disabled={loading || hand.length === 0}>
+                  {loading && <LoaderCircle className="animate-spin" />}
+                  {loading ? 'Finding best move…' : 'Find best move'}
+                </Button>
+                {hand.length === 0 && !loading && (
+                  <p className="text-center text-xs text-muted-foreground">Add tiles to your rack first.</p>
+                )}
+                {errors.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Couldn't solve this position</AlertTitle>
+                    <AlertDescription>
+                      {errors.length === 1 ? (
+                        <p>{errors[0]}</p>
+                      ) : (
+                        <ul className="list-disc pl-4">
+                          {errors.map((e, i) => (
+                            <li key={i}>{e}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardFooter>
+            </Card>
+          </aside>
         </div>
       </div>
+    </TooltipProvider>
+  );
+}
+
+function GroupTiles({ tiles }: { tiles: TileDto[] }) {
+  return (
+    <div className="flex gap-1">
+      {tiles.map((t, i) => (
+        <TileFace key={i} tile={t} />
+      ))}
+    </div>
+  );
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return <p className="max-w-[28rem] text-sm leading-relaxed text-muted-foreground">{children}</p>;
+}
+
+type OptionRowProps = {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+};
+
+function OptionRow({ id, label, hint, checked, onChange }: OptionRowProps) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={id} className="font-normal">{label}</Label>
+        <p className="text-xs leading-snug text-muted-foreground">{hint}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} className="mt-0.5 data-unchecked:bg-[#c4bfb1]" />
     </div>
   );
 }
