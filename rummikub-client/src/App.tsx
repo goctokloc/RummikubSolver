@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { RemovableTile, TileFace } from '@/components/rummikub-tile';
+import { ScrollRow } from '@/components/scroll-row';
 import { TilePicker } from '@/components/tile-picker';
 import {
   type GroupInputDto,
@@ -130,8 +131,12 @@ export default function App() {
                   ) : (
                     <div className="flex flex-wrap gap-x-6 gap-y-5">
                       {board.map((g, i) => (
-                        <div key={i} className="group/row flex items-center gap-1">
-                          <GroupTiles tiles={g.tiles} />
+                        <div key={i} className="group/row flex max-w-full items-center gap-1">
+                          <GroupTiles>
+                            {g.tiles.map((t, j) => (
+                              <TileFace key={j} tile={t} />
+                            ))}
+                          </GroupTiles>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -187,15 +192,17 @@ export default function App() {
                       {result.board.length > 0 && (
                         <div className="flex flex-wrap gap-x-6 gap-y-5">
                           {result.board.map((g, i) => (
-                            <div key={i} className="flex gap-1">
-                              {g.slots.map((s, j) => (
-                                <TileFace
-                                  key={j}
-                                  tile={s.joker ? { joker: true } : s}
-                                  standsFor={s.joker ? s : undefined}
-                                  played={playedSlots[i][j]}
-                                />
-                              ))}
+                            <div key={i} className="max-w-full">
+                              <GroupTiles revealPlayed>
+                                {g.slots.map((s, j) => (
+                                  <TileFace
+                                    key={j}
+                                    tile={s.joker ? { joker: true } : s}
+                                    standsFor={s.joker ? s : undefined}
+                                    played={playedSlots[i][j]}
+                                  />
+                                ))}
+                              </GroupTiles>
                             </div>
                           ))}
                         </div>
@@ -375,13 +382,11 @@ export default function App() {
   );
 }
 
-function GroupTiles({ tiles }: { tiles: TileDto[] }) {
+function GroupTiles({ revealPlayed, children }: { revealPlayed?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex gap-1">
-      {tiles.map((t, i) => (
-        <TileFace key={i} tile={t} />
-      ))}
-    </div>
+    <ScrollRow revealPlayed={revealPlayed}>
+      <div className="flex w-max gap-1">{children}</div>
+    </ScrollRow>
   );
 }
 

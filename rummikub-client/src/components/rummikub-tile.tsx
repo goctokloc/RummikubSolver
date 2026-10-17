@@ -23,6 +23,7 @@ export function TileFace({ tile, size = 'md', standsFor, played, className }: Ti
   const ink = tile.joker ? (standsFor ? INK[standsFor.color] : 'text-foreground') : INK[tile.color!];
   return (
     <span
+      data-played={played || undefined}
       className={cn(
         'relative inline-flex shrink-0 select-none flex-col items-center justify-center rounded-md border border-tile-edge bg-tile-face',
         'shadow-[0_1px_0_var(--tile-edge),0_3px_4px_-3px_rgb(20_20_19/0.18)]',
